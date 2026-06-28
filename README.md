@@ -5,7 +5,10 @@
 This is a lightweight, responsive web application for managing, organizing, and exploring your iPhone photos and videos. It organizes your media by timeline and automatically groups them by geocoded locations using embedded EXIF data.
 
 ## Demo
-![Demo Video](assets/demo.webp)
+<p align="center">
+  <img src="assets/screenshot1.png" width="45%" />
+  <img src="assets/screenshot2.png" width="45%" />
+</p>
 *Demo showcasing timeline scrolling, location filtering, and language switching.*
 
 ### ✨ Features

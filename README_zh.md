@@ -4,8 +4,11 @@
 
 这是一个轻量级、响应式的网页应用，用于管理、组织和探索你的 iPhone 照片与视频。它能通过时间线进行展示，并利用内嵌的 EXIF 数据自动通过地理位置对媒体进行归类和分组。
 
-## 演示视频 (Demo)
-![Demo Video](assets/demo.webp)
+## 演示 (Demo)
+<p align="center">
+  <img src="assets/screenshot1.png" width="45%" />
+  <img src="assets/screenshot2.png" width="45%" />
+</p>
 *演示展示了时间线滚动、地点分类筛选以及中英文切换功能。*
 
 ### ✨ 核心功能

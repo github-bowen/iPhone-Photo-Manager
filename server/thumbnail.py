@@ -25,7 +25,11 @@ if os.path.isabs(_thumb_env):
 else:
     THUMBNAIL_DIR = os.path.realpath(os.path.join(BASE_DIR, _thumb_env))
 
-PHOTOS_DIR = os.path.join(BASE_DIR, "photos")
+_photos_env = os.getenv("PHOTOS_DIR", "photos")
+if os.path.isabs(_photos_env):
+    PHOTOS_DIR = os.path.realpath(_photos_env)
+else:
+    PHOTOS_DIR = os.path.realpath(os.path.join(BASE_DIR, _photos_env))
 
 SIZES = {
     "small": int(os.getenv("THUMBNAIL_SMALL_SIZE", "200")),
