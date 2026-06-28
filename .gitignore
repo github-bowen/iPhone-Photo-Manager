@@ -1,0 +1,40 @@
+# === Python ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+dist/
+build/
+*.whl
+
+# === Virtual environment ===
+venv/
+.venv/
+env/
+
+# === Environment & secrets ===
+.env
+
+# === Data (runtime-generated, user-specific) ===
+data/
+photos.db
+
+# === Photo library (user content, do NOT commit) ===
+photos/
+
+# === IDE & editor ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# === Logs ===
+*.log
+
+# === Gemini agent artifacts ===
+.agents/
+.gemini/

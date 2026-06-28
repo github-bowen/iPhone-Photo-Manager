@@ -1,0 +1,9 @@
+fastapi>=0.138.0
+uvicorn>=0.49.0
+pillow>=12.0.0
+pillow-heif>=1.4.0
+aiosqlite>=0.22.0
+reverse_geocoder>=1.5.1
+python-dotenv
+deep-translator>=1.11.4
+pycountry>=24.0.0

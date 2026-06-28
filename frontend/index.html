@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="iPhone Photo Manager — Browse and search your photo library by time and location">
+  <title>iPhone 照片管理</title>
+  <link rel="stylesheet" href="/index.css">
+</head>
+<body>
+  <div class="app" id="app">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">
+          <div class="sidebar-logo-icon">📸</div>
+          <span class="sidebar-logo-text" data-i18n="app_title"></span>
+        </div>
+      </div>
+
+      <!-- Timeline Section -->
+      <div class="sidebar-section" id="sidebar-timeline-section">
+        <div class="sidebar-section-title">📅 <span data-i18n="timeline"></span></div>
+        <div id="sidebar-timeline"></div>
+      </div>
+
+      <!-- Locations Section -->
+      <div class="sidebar-section" id="sidebar-locations-section">
+        <div class="sidebar-section-title" style="display: flex; justify-content: space-between; align-items: center;">
+          <span>📍 <span data-i18n="locations"></span></span>
+          <label style="font-size: 11px; font-weight: normal; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+            <input type="checkbox" id="country-only-toggle" style="margin: 0;">
+            <span data-i18n="country_only"></span>
+          </label>
+        </div>
+        <div id="sidebar-locations"></div>
+      </div>
+
+      <!-- Stats -->
+      <div class="sidebar-stats" id="sidebar-stats">
+        <span data-i18n="loading"></span>
+      </div>
+      <!-- Mobile Sidebar Overlay -->
+      <div class="sidebar-overlay" id="sidebar-overlay"></div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main">
+      <!-- Scan Banner -->
+      <div class="scan-banner hidden" id="scan-banner">
+        <div class="scan-banner-spinner"></div>
+        <span id="scan-banner-text" data-i18n="scanning"></span>
+        <div class="scan-banner-progress">
+          <div class="scan-banner-progress-bar" id="scan-banner-progress"></div>
+        </div>
+      </div>
+
+      <!-- Header / Toolbar -->
+      <header class="header" id="header">
+        <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Menu">☰</button>
+        <div class="search-container">
+          <span class="search-icon">🔍</span>
+          <input type="text" class="search-input" id="search-input"
+                 data-i18n-placeholder="search_placeholder" autocomplete="off">
+        </div>
+        <div class="filter-group" id="filter-group">
+          <button class="filter-btn active" data-filter="all" id="filter-all" data-i18n="filter_all"></button>
+          <button class="filter-btn" data-filter="HEIC" id="filter-heic" data-i18n="filter_photos"></button>
+          <button class="filter-btn" data-filter="MOV" id="filter-mov" data-i18n="filter_videos"></button>
+          <button class="filter-btn" data-filter="PNG" id="filter-png" data-i18n="filter_screenshots"></button>
+          <input type="date" class="date-input" id="date-from" data-i18n-title="date_from">
+          <input type="date" class="date-input" id="date-to" data-i18n-title="date_to">
+        </div>
+      </header>
+
+      <!-- Photo Gallery -->
+      <div class="gallery-container" id="gallery-container">
+        <div id="gallery"></div>
+        <div class="load-more-container" id="load-more-container" style="display:none;">
+          <button class="load-more-btn" id="load-more-btn" data-i18n="load_more"></button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Photo Detail Modal -->
+  <div class="modal-backdrop" id="modal-backdrop">
+    <button class="modal-close" id="modal-close" data-i18n-title="close_btn">✕</button>
+    <div class="modal-content">
+      <div class="modal-image-container" id="modal-image-container">
+        <button class="modal-nav prev" id="modal-prev" data-i18n-title="prev_btn">‹</button>
+        <!-- Image or video will be inserted here dynamically -->
+        <button class="modal-nav next" id="modal-next" data-i18n-title="next_btn">›</button>
+      </div>
+      <div class="modal-info" id="modal-info">
+        <!-- Photo details will be inserted here dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Overlay (initial scan) -->
+  <div class="loading-overlay hidden" id="loading-overlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-text" id="loading-text" data-i18n="initializing"></div>
+    <div class="loading-progress">
+      <div class="loading-progress-bar" id="loading-progress-bar"></div>
+    </div>
+  </div>
+
+  <script src="/index.js"></script>
+</body>
+</html>
