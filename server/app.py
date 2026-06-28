@@ -542,12 +542,13 @@ async def api_get_timeline():
 
 
 @app.get("/api/locations")
-async def api_get_locations():
+async def api_get_locations(lang: str = None):
     """Get unique locations with photo counts."""
     db = await get_db()
     try:
         locations = await get_locations(db)
-        if os.getenv("APP_LANGUAGE", "zh") == "zh":
+        target_lang = lang if lang else os.getenv("APP_LANGUAGE", "zh")
+        if target_lang == "zh":
             unique_locs = {loc["location_name"] for loc in locations if loc.get("location_name")}
             translations = await asyncio.gather(*(translate_text(loc) for loc in unique_locs))
             trans_map = dict(zip(unique_locs, translations))

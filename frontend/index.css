@@ -134,6 +134,63 @@ body {
   overflow: hidden;
 }
 
+/* --- Header Actions --- */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.toggle-pill {
+  display: flex;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 2px;
+  position: relative;
+  cursor: pointer;
+  width: 76px;
+  height: 28px;
+  align-items: center;
+}
+.toggle-pill-option {
+  flex: 1;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  z-index: 2;
+  transition: color 0.3s ease, font-weight 0.3s ease;
+  user-select: none;
+}
+.toggle-pill-bg {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+  width: calc(50% - 2px);
+  background: var(--bg-secondary);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+  border-radius: 6px;
+  transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+  z-index: 1;
+}
+
+.toggle-pill input:checked ~ .toggle-pill-bg {
+  transform: translateX(100%);
+}
+
+.toggle-pill input:not(:checked) ~ .left {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.toggle-pill input:checked ~ .right {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
 /* --- Sidebar --- */
 .sidebar {
   width: var(--sidebar-width);

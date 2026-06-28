@@ -6,21 +6,20 @@ A lightweight, local-first iPhone photo browsing and management tool. After expo
 
 ### ✨ Features
 
-- **📷 Full Format Support** — HEIC, JPG, PNG, MOV with automatic EXIF metadata extraction.
-- **🎞️ Live Photo Playback** — Hover over thumbnails to autoplay, or click "▶ Play" in the detail view to watch the Live Photo video.
-- **📅 Timeline Browsing** — Grouped by month. Click a month to filter, or expand the month to filter by specific days. Daily headers display your travel trajectory.
-- **📍 Location Filtering** — Offline reverse geocoding. Filter hierarchically by Country → City.
-- **📱 Mobile Responsive** — Fluid grid and a sliding sidebar menu optimized for mobile devices.
-- **🌏 Bilingual** — UI and locations support English and Chinese (Google Translate for locations).
-- **🖼️ Smart Thumbnails** — Auto-generates WebP thumbnails (small/medium) mirroring the original directory structure.
-- **🔍 High-Res Viewer** — View original full-quality (4K) photos instantly within the browser, powered by on-the-fly HEIC-to-JPEG conversion and disk caching.
-- **⚡ Incremental Scanning** — Scans only new/deleted files on startup. Lightning-fast startup even with tens of thousands of photos.
-- **🔒 Secure Design** — Binds to localhost by default, includes path traversal protection and strict CSP headers.
+A lightweight, local-first web gallery for your iPhone photos. It supports HEIC, Live Photos (MOV), and reverse geocoding without uploading any data to the cloud. Designed with a mobile-responsive UI, timeline grouping, and 4K high-res on-the-fly rendering.
 
-### 📁 Project Structure
+To use it, simply export your iPhone photos and copy them into your configured `PHOTOS_DIR` (default is `./photos` in the project root). The tool will automatically scan the folder on startup.
+
+**Expected Directory Structure:**
 
 ```text
 iphone-photo-manager/
+├── photos/                  # Your PHOTOS_DIR (configured in .env)
+│   ├── 202601/              # (Optional) Group by year/month
+│   │   ├── IMG_0001.HEIC
+│   │   ├── IMG_0001.MOV     # Paired Live Photo video
+│   │   └── IMG_0002.JPG
+│   └── ...
 ├── server/                  # Python backend
 │   ├── app.py               # FastAPI entrypoint, routing, background tasks
 │   ├── database.py          # SQLite database schema and queries

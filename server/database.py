@@ -144,8 +144,9 @@ async def get_photos(
         params.append(location_name)
 
     if city:
+        cq = "Zuerich" if city == "Zurich" else city
         conditions.append("(location_name LIKE ? OR location_name LIKE ?)")
-        params.extend([f"{city}, %", f"%, {city}, %"])
+        params.extend([f"{cq}%", f"% {cq}%"])
 
     if country:
         conditions.append("(location_name = ? OR location_name LIKE ?)")

@@ -37,6 +37,8 @@
       app_title: "Photo Manager",
       timeline: "Timeline",
       locations: "Locations",
+      load_original: "Load 4K Original",
+      country_only: "Country Only",
       loading: "Loading...",
       scanning: "Scanning...",
       search_placeholder: "Search by location...",
@@ -94,6 +96,8 @@
       app_title: "照片管理",
       timeline: "时间线",
       locations: "地点",
+      load_original: "加载 4K 原图",
+      country_only: "仅显示国家",
       loading: "加载中...",
       scanning: "正在扫描...",
       search_placeholder: "按地点搜索...",
@@ -193,6 +197,8 @@
   const dateFromInput = $("date-from");
   const dateToInput = $("date-to");
   const countryOnlyToggle = $("country-only-toggle");
+  const loadOriginalToggle = $("load-original-toggle");
+  const langToggle = $("lang-toggle");
 
   // --- API Helpers ---
   async function api(endpoint) {
@@ -854,7 +860,7 @@
 
   async function loadLocations() {
     try {
-      const data = await api("/api/locations");
+      const data = await api(`/api/locations?lang=${state.language || "zh"}`);
       state.locations = data;
       renderLocations();
     } catch (e) {
@@ -959,7 +965,7 @@
                e.stopPropagation();
                state.activeLocation = null;
                state.activeCity = cityKey;
-               state.activeCountry = null;
+               state.activeCountry = countryEn;
                searchInput.value = cityData.display;
                resetAndReload();
                resetSidebarTimer();
@@ -1274,9 +1280,19 @@
   async function init() {
     try {
       const config = await api("/api/config");
-      if (config.language) state.language = config.language;
+      
+      if (localStorage.getItem("app_language")) {
+          state.language = localStorage.getItem("app_language");
+      } else if (config.language) {
+          state.language = config.language;
+      }
+      if (langToggle) langToggle.checked = state.language === "en";
+
       if (config.theme) state.theme = config.theme;
-      if (config.load_original_on_click !== undefined) state.loadOriginalOnClick = config.load_original_on_click;
+      if (config.load_original_on_click !== undefined) {
+          state.loadOriginalOnClick = config.load_original_on_click;
+          if (loadOriginalToggle) loadOriginalToggle.checked = state.loadOriginalOnClick;
+      }
     } catch (e) {
       console.warn("Failed to load config, using defaults");
     }
@@ -1287,6 +1303,23 @@
     setupFilters();
     setupKeyboard();
     setupInfiniteScroll();
+
+    if (loadOriginalToggle) {
+      loadOriginalToggle.addEventListener("change", function (e) {
+        state.loadOriginalOnClick = e.target.checked;
+      });
+    }
+
+    if (langToggle) {
+      langToggle.addEventListener("change", function (e) {
+        state.language = e.target.checked ? "en" : "zh";
+        localStorage.setItem("app_language", state.language);
+        applyTranslations();
+        loadTimeline();
+        loadLocations();
+        resetAndReload();
+      });
+    }
 
     // Check scan status first
     await checkScanStatus();
