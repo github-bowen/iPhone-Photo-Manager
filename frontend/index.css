@@ -258,12 +258,18 @@ body {
 }
 
 .sidebar-section-title {
-  font-size: 0.7rem;
-  font-weight: 600;
+  font-size: 0.75rem;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--text-muted);
   margin-bottom: var(--space-sm);
+  padding-bottom: var(--space-xs);
+  border-bottom: 1px solid var(--border-subtle);
+  position: sticky;
+  top: 0;
+  background: var(--bg-secondary);
+  z-index: 10;
 }
 
 .sidebar-item {
@@ -282,11 +288,15 @@ body {
 .sidebar-item:hover {
   background: var(--bg-glass-hover);
   color: var(--text-primary);
+  transform: translateX(4px);
 }
 
 .sidebar-item.active {
   background: rgba(139, 92, 246, 0.12);
   color: var(--text-accent);
+  font-weight: 600;
+  border-left: 3px solid var(--accent);
+  padding-left: calc(var(--space-md) - 3px);
 }
 
 .sidebar-item-count {
