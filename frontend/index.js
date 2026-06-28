@@ -429,32 +429,32 @@
 
     // Live Photo: preload video on hover
     if (photo.is_live_photo && photo.live_photo_mov) {
+      let hoverTimeout;
       card.addEventListener("mouseenter", function () {
-        if (!card.querySelector("video")) {
-          // Find the MOV photo's ID by searching in loaded photos
-          const movPath = photo.live_photo_mov;
-          const video = document.createElement("video");
-          video.muted = true;
-          video.loop = true;
-          video.playsInline = true;
-          video.src = "/api/photos/" + photo.id + "/file";
-          // We use the HEIC file endpoint but need the MOV
-          // Actually, serve the MOV file via a direct path
-          // The live_photo_mov is a relative path, let's find the MOV by looking it up
-          video.src = "/api/photos/" + photo.id + "/live-video";
-          video.play().catch(function () {});
-          card.appendChild(video);
-        } else {
-          const v = card.querySelector("video");
-          if (v) v.play().catch(function () {});
-        }
+        hoverTimeout = setTimeout(() => {
+          if (!card.querySelector("video")) {
+            const video = document.createElement("video");
+            video.muted = true;
+            video.loop = true;
+            video.playsInline = true;
+            video.src = "/api/photos/" + photo.id + "/live-video";
+            video.play().catch(function () {});
+            card.appendChild(video);
+          } else {
+            const v = card.querySelector("video");
+            if (v) v.play().catch(function () {});
+          }
+        }, 200); // 200ms delay to prevent loading on fast mouse swipe
       });
 
       card.addEventListener("mouseleave", function () {
+        clearTimeout(hoverTimeout);
         const v = card.querySelector("video");
         if (v) {
           v.pause();
-          v.currentTime = 0;
+          v.removeAttribute("src"); // Stop browser buffering
+          v.load();
+          v.remove(); // Remove element to free memory
         }
       });
     }
