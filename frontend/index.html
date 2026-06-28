@@ -26,12 +26,8 @@
 
       <!-- Locations Section -->
       <div class="sidebar-section" id="sidebar-locations-section">
-        <div class="sidebar-section-title" style="display: flex; justify-content: space-between; align-items: center;">
-          <span>📍 <span data-i18n="locations"></span></span>
-          <label style="font-size: 11px; font-weight: normal; cursor: pointer; display: flex; align-items: center; gap: 4px;">
-            <input type="checkbox" id="country-only-toggle" style="margin: 0;">
-            <span data-i18n="country_only"></span>
-          </label>
+        <div class="sidebar-header">
+          <h2 data-i18n="locations_title">Locations</h2>
         </div>
         <div id="sidebar-locations"></div>
       </div>
@@ -73,18 +69,16 @@
         </div>
 
         <div class="header-actions">
-          <label class="toggle-pill" title="Image Quality">
-            <input type="checkbox" id="load-original-toggle" style="display:none">
+          <div class="toggle-pill" id="load-original-toggle" title="Image Quality">
             <div class="toggle-pill-bg"></div>
             <div class="toggle-pill-option left">⚡️</div>
             <div class="toggle-pill-option right">4K</div>
-          </label>
-          <label class="toggle-pill" title="Language / 语言">
-            <input type="checkbox" id="lang-toggle" style="display:none">
+          </div>
+          <div class="toggle-pill" id="lang-toggle" title="Language / 语言">
             <div class="toggle-pill-bg"></div>
             <div class="toggle-pill-option left">中</div>
             <div class="toggle-pill-option right">EN</div>
-          </label>
+          </div>
         </div>
       </header>
 

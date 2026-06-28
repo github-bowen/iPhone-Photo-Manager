@@ -34,7 +34,7 @@ from server.geocoder import reverse_geocode, batch_reverse_geocode
 _translation_cache = {}
 
 async def translate_text(text: str) -> str:
-    if not text or os.getenv("APP_LANGUAGE", "zh") != "zh":
+    if not text:
         return text
     if text in _translation_cache:
         return _translation_cache[text]
@@ -285,6 +285,7 @@ async def api_get_photos(
     date_from: Optional[str] = Query(None),
     date_to: Optional[str] = Query(None),
     screenshots: Optional[bool] = Query(None),
+    lang: Optional[str] = Query(None),
 ):
     """Get paginated list of photos with optional filters."""
     db = await get_db()
@@ -301,7 +302,8 @@ async def api_get_photos(
             date_to=date_to,
             is_screenshot=screenshots,
         )
-        if os.getenv("APP_LANGUAGE", "zh") == "zh":
+        target_lang = lang if lang else os.getenv("APP_LANGUAGE", "zh")
+        if target_lang == "zh":
             unique_locs = {p["location_name"] for p in photos if p.get("location_name")}
             translations = await asyncio.gather(*(translate_text(loc) for loc in unique_locs))
             trans_map = dict(zip(unique_locs, translations))

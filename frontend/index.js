@@ -196,7 +196,6 @@
   const loadingProgressBar = $("loading-progress-bar");
   const dateFromInput = $("date-from");
   const dateToInput = $("date-to");
-  const countryOnlyToggle = $("country-only-toggle");
   const loadOriginalToggle = $("load-original-toggle");
   const langToggle = $("lang-toggle");
 
@@ -240,6 +239,9 @@
     }
     if (state.dateTo) {
       params.set("date_to", state.dateTo + "T23:59:59");
+    }
+    if (state.language) {
+      params.set("lang", state.language);
     }
 
     try {
@@ -305,7 +307,11 @@
             let city = partsDisp[0];
             if (city.includes(" (")) city = city.split(" (")[0];
             if (city.includes(" / ")) city = city.split(" / ")[0];
-            if (city.toLowerCase() === "zuerich" || city === "Zurich") city = "苏黎世";
+            if (state.language === "zh" && (city.toLowerCase() === "zuerich" || city === "Zurich")) {
+                city = "苏黎世";
+            } else if (state.language === "en" && (city.toLowerCase() === "zuerich" || city === "苏黎世")) {
+                city = "Zurich";
+            }
             city = city.trim();
 
             if (!locationSets[country]) locationSets[country] = new Set();
@@ -885,112 +891,97 @@
     }
     sidebarLocations.appendChild(allItem);
 
-    if (state.countryOnly) {
-      const countries = {};
-      for (const loc of state.locations) {
-        if (!loc.location_name || !loc.display_location) continue;
-        
-        const partsEn = loc.location_name.split(", ");
-        const countryEn = partsEn[partsEn.length - 1];
-        
-        const partsDisp = loc.display_location.split(", ");
-        const countryDisp = partsDisp[partsDisp.length - 1];
-
-        if (!countries[countryEn]) {
-          countries[countryEn] = { display: countryDisp, count: 0, cities: [] };
-        }
-        countries[countryEn].count += loc.count;
-        countries[countryEn].cities.push(loc);
-      }
+    const countries = {};
+    for (const loc of state.locations) {
+      if (!loc.location_name || !loc.display_location) continue;
       
-      const sortedCountries = Object.entries(countries).sort((a,b)=>b[1].count-a[1].count);
-      for (const [countryEn, data] of sortedCountries) {
-        const wrapper = document.createElement("div");
-        
-        const isExpanded = state.expandedCountries && state.expandedCountries.has(countryEn);
-        const prefix = isExpanded ? "▼ " : "▶ ";
-        
-        const item = createSidebarItem(prefix + data.display, data.count, function (e) {
-          if (!state.expandedCountries) state.expandedCountries = new Set();
-          if (state.expandedCountries.has(countryEn)) {
-            state.expandedCountries.delete(countryEn);
-          } else {
-            state.expandedCountries.add(countryEn);
-          }
-          
-          state.activeLocation = null;
-          state.activeCity = null;
-          state.activeCountry = countryEn;
-          searchInput.value = data.display;
-          resetAndReload();
-          resetSidebarTimer();
-          
-          renderLocations(); // re-render to show/hide cities
-        });
-        
-        if (state.activeCountry === countryEn && !state.activeLocation && !state.activeCity) item.classList.add("active");
-        wrapper.appendChild(item);
-        
-        if (isExpanded) {
-          const citiesContainer = document.createElement("div");
-          citiesContainer.style.paddingLeft = "15px";
-          
-          const groupedCities = {};
-          function cleanCity(name) {
-              if (!name) return name;
-              let cleaned = name;
-              if (cleaned.includes(" (")) cleaned = cleaned.split(" (")[0];
-              if (cleaned.includes(" / ")) cleaned = cleaned.split(" / ")[0];
-              if (cleaned.toLowerCase() === "zuerich") cleaned = "Zurich";
-              return cleaned.trim();
-          }
+      const partsEn = loc.location_name.split(", ");
+      const countryEn = partsEn[partsEn.length - 1];
+      
+      const partsDisp = loc.display_location.split(", ");
+      const countryDisp = partsDisp[partsDisp.length - 1];
 
-          for (const loc of data.cities) {
-            const partsEn = loc.location_name.split(", ");
-            const partsDisp = loc.display_location.split(", ");
-            
-            let cityEn = cleanCity(partsEn[0]);
-            let cityDisp = cleanCity(partsDisp[0]);
-            if (cityEn === "Zurich" && cityDisp === "Zurich") cityDisp = "苏黎世";
-            
-            if (!groupedCities[cityEn]) {
-                groupedCities[cityEn] = { display: cityDisp, count: 0 };
-            }
-            groupedCities[cityEn].count += loc.count;
-          }
-          
-          const sortedCities = Object.entries(groupedCities).sort((a,b)=>b[1].count - a[1].count);
-          for (const [cityKey, cityData] of sortedCities) {
-            const cityItem = createSidebarItem("  " + cityData.display, cityData.count, function(e) {
-               e.stopPropagation();
-               state.activeLocation = null;
-               state.activeCity = cityKey;
-               state.activeCountry = countryEn;
-               searchInput.value = cityData.display;
-               resetAndReload();
-               resetSidebarTimer();
-               renderLocations();
-            });
-            if (state.activeCity === cityKey) cityItem.classList.add("active");
-            citiesContainer.appendChild(cityItem);
-          }
-          wrapper.appendChild(citiesContainer);
+      if (!countries[countryEn]) {
+        countries[countryEn] = { display: countryDisp, count: 0, cities: [] };
+      }
+      countries[countryEn].count += loc.count;
+      countries[countryEn].cities.push(loc);
+    }
+    
+    const sortedCountries = Object.entries(countries).sort((a,b)=>b[1].count-a[1].count);
+    for (const [countryEn, data] of sortedCountries) {
+      const wrapper = document.createElement("div");
+      
+      const isExpanded = state.expandedCountries && state.expandedCountries.has(countryEn);
+      const prefix = isExpanded ? "▼ " : "▶ ";
+      
+      const item = createSidebarItem(prefix + data.display, data.count, function (e) {
+        if (!state.expandedCountries) state.expandedCountries = new Set();
+        if (state.expandedCountries.has(countryEn)) {
+          state.expandedCountries.delete(countryEn);
+        } else {
+          state.expandedCountries.add(countryEn);
         }
-        sidebarLocations.appendChild(wrapper);
+        
+        state.activeLocation = null;
+        state.activeCity = null;
+        state.activeCountry = countryEn;
+        searchInput.value = data.display;
+        resetAndReload();
+        resetSidebarTimer();
+        
+        renderLocations(); // re-render to show/hide cities
+      });
+      
+      if (state.activeCountry === countryEn && !state.activeLocation && !state.activeCity) item.classList.add("active");
+      wrapper.appendChild(item);
+      
+      if (isExpanded) {
+        const citiesContainer = document.createElement("div");
+        citiesContainer.style.paddingLeft = "15px";
+        
+        const groupedCities = {};
+        function cleanCity(name) {
+            if (!name) return name;
+            let cleaned = name;
+            if (cleaned.includes(" (")) cleaned = cleaned.split(" (")[0];
+            if (cleaned.includes(" / ")) cleaned = cleaned.split(" / ")[0];
+            return cleaned.trim();
+        }
+
+        for (const loc of data.cities) {
+          const partsEn = loc.location_name.split(", ");
+          const partsDisp = loc.display_location.split(", ");
+          
+          let cityEn = cleanCity(partsEn[0]);
+          let cityDisp = cleanCity(partsDisp[0]);
+          if (state.language === "zh" && (cityEn.toLowerCase() === "zuerich" || cityEn === "Zurich")) cityDisp = "苏黎世";
+          else if (state.language === "en" && (cityDisp.toLowerCase() === "zuerich" || cityDisp === "苏黎世")) cityDisp = "Zurich";
+          
+          if (!groupedCities[cityEn]) {
+              groupedCities[cityEn] = { display: cityDisp, count: 0 };
+          }
+          groupedCities[cityEn].count += loc.count;
+        }
+        
+        const sortedCities = Object.entries(groupedCities).sort((a,b)=>b[1].count - a[1].count);
+        for (const [cityKey, cityData] of sortedCities) {
+          const cityItem = createSidebarItem("  " + cityData.display, cityData.count, function(e) {
+             e.stopPropagation();
+             state.activeLocation = null;
+             state.activeCity = cityKey;
+             state.activeCountry = countryEn;
+             searchInput.value = cityData.display;
+             resetAndReload();
+             resetSidebarTimer();
+             renderLocations();
+          });
+          if (state.activeCity === cityKey) cityItem.classList.add("active");
+          citiesContainer.appendChild(cityItem);
+        }
+        wrapper.appendChild(citiesContainer);
       }
-    } else {
-      for (const loc of state.locations) {
-        if (!loc.location_name) continue;
-        const item = createSidebarItem(loc.display_location, loc.count, function () {
-          state.activeLocation = loc.location_name;
-          state.activeCountry = null;
-          searchInput.value = loc.location_name;
-          resetAndReload();
-          setActiveSidebarItem(sidebarLocations, item);
-        });
-        if (state.activeLocation === loc.location_name) item.classList.add("active");
-        sidebarLocations.appendChild(item);
-      }
+      sidebarLocations.appendChild(wrapper);
     }
   }
 
@@ -1109,20 +1100,7 @@
       }, 400);
     });
 
-    // Country Toggle
-    if (countryOnlyToggle) {
-      countryOnlyToggle.addEventListener("change", function () {
-        state.countryOnly = this.checked;
-        if (state.activeLocation || state.activeCountry || state.activeCity) {
-          state.activeLocation = null;
-          state.activeCity = null;
-          state.activeCountry = null;
-          searchInput.value = "";
-          resetAndReload();
-        }
-        renderLocations();
-      });
-    }
+    // Event bindings for Sidebar
 
     // Mobile Sidebar Toggle
     if (mobileMenuBtn) {
@@ -1286,12 +1264,19 @@
       } else if (config.language) {
           state.language = config.language;
       }
-      if (langToggle) langToggle.checked = state.language === "en";
+      if (langToggle) {
+          if (state.language === "en") langToggle.classList.add("active");
+          else langToggle.classList.remove("active");
+      }
 
       if (config.theme) state.theme = config.theme;
+
       if (config.load_original_on_click !== undefined) {
           state.loadOriginalOnClick = config.load_original_on_click;
-          if (loadOriginalToggle) loadOriginalToggle.checked = state.loadOriginalOnClick;
+          if (loadOriginalToggle) {
+              if (state.loadOriginalOnClick) loadOriginalToggle.classList.add("active");
+              else loadOriginalToggle.classList.remove("active");
+          }
       }
     } catch (e) {
       console.warn("Failed to load config, using defaults");
@@ -1305,14 +1290,16 @@
     setupInfiniteScroll();
 
     if (loadOriginalToggle) {
-      loadOriginalToggle.addEventListener("change", function (e) {
-        state.loadOriginalOnClick = e.target.checked;
+      loadOriginalToggle.addEventListener("click", function (e) {
+        this.classList.toggle("active");
+        state.loadOriginalOnClick = this.classList.contains("active");
       });
     }
 
     if (langToggle) {
-      langToggle.addEventListener("change", function (e) {
-        state.language = e.target.checked ? "en" : "zh";
+      langToggle.addEventListener("click", function (e) {
+        this.classList.toggle("active");
+        state.language = this.classList.contains("active") ? "en" : "zh";
         localStorage.setItem("app_language", state.language);
         applyTranslations();
         loadTimeline();

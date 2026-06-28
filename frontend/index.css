@@ -177,18 +177,20 @@ body {
   z-index: 1;
 }
 
-.toggle-pill input:checked ~ .toggle-pill-bg {
+.toggle-pill.active .toggle-pill-bg {
   transform: translateX(100%);
 }
 
-.toggle-pill input:not(:checked) ~ .left {
+.toggle-pill:not(.active) .left {
   color: var(--text-primary);
   font-weight: 700;
+  text-decoration: underline;
 }
 
-.toggle-pill input:checked ~ .right {
+.toggle-pill.active .right {
   color: var(--text-primary);
   font-weight: 700;
+  text-decoration: underline;
 }
 
 /* --- Sidebar --- */
