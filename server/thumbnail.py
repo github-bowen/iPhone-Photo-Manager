@@ -146,7 +146,19 @@ def _generate_mov_thumbnail(filepath: str, full_path: str) -> bool:
     try:
         import cv2
         cap = cv2.VideoCapture(full_path)
+        
+        # Try to get frame at 0.5 seconds for better clarity
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        if fps > 0:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, int(fps * 0.5))
+            
         success, frame = cap.read()
+        
+        # Fallback to first frame if seeking fails
+        if not success:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            success, frame = cap.read()
+            
         cap.release()
         
         if success:
@@ -168,7 +180,8 @@ def _generate_mov_thumbnail(filepath: str, full_path: str) -> bool:
                     new_w = int(w * (max_dim / h))
                     
                 thumb = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
-                thumb.save(out_path, "WEBP", quality=THUMBNAIL_QUALITY)
+                # Use higher quality (95) for videos to improve clarity
+                thumb.save(out_path, "WEBP", quality=95)
                 
             return True
     except Exception as e:
