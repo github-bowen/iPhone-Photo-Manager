@@ -1091,7 +1091,7 @@
         document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
         this.classList.add("active");
         const filter = this.dataset.filter;
-        state.fileType = filter === "all" ? null : filter;
+        state.activeFilter = filter;
         resetAndReload();
         resetSidebarTimer();
       });
