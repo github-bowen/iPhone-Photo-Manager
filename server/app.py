@@ -499,6 +499,9 @@ async def api_get_live_video(photo_id: int):
         await db.close()
 
 
+# Global semaphore for on-demand thumbnail generation to prevent OOM from cv2
+thumbnail_semaphore = asyncio.Semaphore(1)
+
 @app.get("/api/photos/{photo_id}/thumbnail/{size}")
 async def api_get_thumbnail(photo_id: int, size: str):
     """Serve a thumbnail image."""
@@ -515,9 +518,10 @@ async def api_get_thumbnail(photo_id: int, size: str):
 
         if not os.path.exists(thumb_path):
             # Try to generate on-demand
-            success = await asyncio.to_thread(
-                generate_thumbnail, photo_id, photo["filepath"], photo["file_type"]
-            )
+            async with thumbnail_semaphore:
+                success = await asyncio.to_thread(
+                    generate_thumbnail, photo_id, photo["filepath"], photo["file_type"]
+                )
             if success:
                 await update_photo(db, photo_id, {"has_thumbnail": 1})
             else:
