@@ -627,6 +627,38 @@ body {
   transform: scale(1);
 }
 
+.modal-backdrop.active .sidebar-item:active {
+  transform: scale(0.98);
+}
+
+.sidebar-item-label-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sidebar-item-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.sidebar-item-icon svg {
+  transition: transform var(--transition-normal);
+}
+
+.sidebar-item-icon.expanded svg {
+  transform: rotate(90deg) !important;
+}
+
 .modal-image-container {
   flex: 1;
   display: flex;

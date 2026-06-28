@@ -804,10 +804,9 @@
       const wrapper = document.createElement("div");
       
       const isExpanded = state.expandedMonths && state.expandedMonths.has(month);
-      const prefix = isExpanded ? "▼ " : "▶ ";
-      
       const label = formatMonthLabel(month);
-      const item = createSidebarItem(prefix + label, data.count, function () {
+      
+      const item = createSidebarItem(label, data.count, function () {
         if (!state.expandedMonths) state.expandedMonths = new Set();
         if (state.expandedMonths.has(month)) {
           state.expandedMonths.delete(month);
@@ -842,7 +841,7 @@
         daysContainer.style.paddingLeft = "15px";
         
         for (const day of data.days) {
-            const dayItem = createSidebarItem("  " + day.date, day.count, function(e) {
+            const dayItem = createSidebarItem(day.date, day.count, function(e) {
                e.stopPropagation();
                state.dateFrom = day.date;
                state.dateTo = day.date;
@@ -851,7 +850,7 @@
                resetAndReload();
                resetSidebarTimer();
                renderTimeline();
-            });
+            }, { indentLevel: 1 });
             if (state.dateFrom === day.date && state.dateTo === day.date) {
                 dayItem.classList.add("active");
             }
@@ -913,9 +912,7 @@
       const wrapper = document.createElement("div");
       
       const isExpanded = state.expandedCountries && state.expandedCountries.has(countryEn);
-      const prefix = isExpanded ? "▼ " : "▶ ";
-      
-      const item = createSidebarItem(prefix + data.display, data.count, function (e) {
+      const item = createSidebarItem(data.display, data.count, function (e) {
         if (!state.expandedCountries) state.expandedCountries = new Set();
         if (state.expandedCountries.has(countryEn)) {
           state.expandedCountries.delete(countryEn);
@@ -931,7 +928,7 @@
         resetSidebarTimer();
         
         renderLocations(); // re-render to show/hide cities
-      });
+      }, { isExpandable: true, isExpanded: isExpanded });
       
       if (state.activeCountry === countryEn && !state.activeLocation && !state.activeCity) item.classList.add("active");
       wrapper.appendChild(item);
@@ -966,7 +963,7 @@
         
         const sortedCities = Object.entries(groupedCities).sort((a,b)=>b[1].count - a[1].count);
         for (const [cityKey, cityData] of sortedCities) {
-          const cityItem = createSidebarItem("  " + cityData.display, cityData.count, function(e) {
+          const cityItem = createSidebarItem(cityData.display, cityData.count, function(e) {
              e.stopPropagation();
              state.activeLocation = null;
              state.activeCity = cityKey;
@@ -985,13 +982,36 @@
     }
   }
 
-  function createSidebarItem(label, count, onClick) {
+  function createSidebarItem(label, count, onClick, options = {}) {
     const item = document.createElement("div");
     item.className = "sidebar-item";
+    
+    // Default options
+    const { isExpandable = false, isExpanded = false, indentLevel = 0 } = options;
+
+    if (indentLevel > 0) {
+      item.style.paddingLeft = `calc(var(--space-md) + ${indentLevel * 24}px)`;
+    }
+
+    const leftWrap = document.createElement("div");
+    leftWrap.className = "sidebar-item-label-wrap";
+
+    if (isExpandable) {
+      const icon = document.createElement("span");
+      icon.className = "sidebar-item-icon";
+      if (isExpanded) icon.classList.add("expanded");
+      icon.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>`;
+      leftWrap.appendChild(icon);
+    } else if (indentLevel === 0) {
+      // Add empty space to align with expandable items, unless it's an indented item
+      // Wait, let's just let it align normally.
+    }
 
     const labelEl = document.createElement("span");
     labelEl.textContent = label;
-    item.appendChild(labelEl);
+    leftWrap.appendChild(labelEl);
+
+    item.appendChild(leftWrap);
 
     if (count !== "" && count != null) {
       const countEl = document.createElement("span");
