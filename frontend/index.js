@@ -167,6 +167,7 @@
     document.querySelectorAll("[data-i18n-title]").forEach(el => {
       el.title = t(el.getAttribute("data-i18n-title"));
     });
+    updateStats();
   }
 
   // --- DOM References ---
