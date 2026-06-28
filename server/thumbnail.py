@@ -135,9 +135,41 @@ def _generate_image_thumbnail(filepath: str, full_path: str) -> bool:
 
 def _generate_mov_thumbnail(filepath: str, full_path: str) -> bool:
     """
-    Generate thumbnail for MOV. Since ffmpeg isn't available, we create a
-    placeholder image with a video icon to ensure the UI doesn't crash.
+    Generate thumbnail for MOV.
+    First tries to use opencv-python (cv2) to extract a frame.
+    If it fails, it creates a placeholder image.
     """
+    try:
+        import cv2
+        cap = cv2.VideoCapture(full_path)
+        success, frame = cap.read()
+        cap.release()
+        
+        if success:
+            from PIL import Image
+            # Convert BGR to RGB
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            img = Image.fromarray(frame_rgb)
+            
+            for size_name, max_dim in SIZES.items():
+                out_path = get_thumbnail_path(filepath, size_name)
+                os.makedirs(os.path.dirname(out_path), exist_ok=True)
+                
+                w, h = img.size
+                if w >= h:
+                    new_w = max_dim
+                    new_h = int(h * (max_dim / w))
+                else:
+                    new_h = max_dim
+                    new_w = int(w * (max_dim / h))
+                    
+                thumb = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+                thumb.save(out_path, "WEBP", quality=THUMBNAIL_QUALITY)
+                
+            return True
+    except Exception as e:
+        logger.error("Failed to generate real video thumbnail, falling back to generic: %s", e)
+
     try:
         from PIL import Image, ImageDraw, ImageFont
         img = Image.new("RGB", (800, 800), color=(40, 40, 40))

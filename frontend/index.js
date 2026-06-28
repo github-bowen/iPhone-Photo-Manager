@@ -213,6 +213,17 @@
     if (state.loading) return;
     state.loading = true;
 
+    if (!append) {
+      gallery.replaceChildren();
+      const loadingEl = document.createElement("div");
+      loadingEl.className = "gallery-loading";
+      loadingEl.style.padding = "var(--space-2xl)";
+      loadingEl.style.textAlign = "center";
+      loadingEl.style.color = "var(--text-muted)";
+      loadingEl.textContent = "⏳ 加载中... (Loading...)";
+      gallery.appendChild(loadingEl);
+    }
+
     const params = new URLSearchParams();
     params.set("page", state.currentPage.toString());
     params.set("per_page", state.perPage.toString());

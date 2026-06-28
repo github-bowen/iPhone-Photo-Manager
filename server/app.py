@@ -33,19 +33,26 @@ from server.geocoder import reverse_geocode, batch_reverse_geocode
 # Translation cache
 _translation_cache = {}
 
-async def translate_text(text: str) -> str:
+async def translate_text(text: str, target_lang: str = 'zh-CN') -> str:
     if not text:
         return text
     if text in _translation_cache:
         return _translation_cache[text]
     try:
-        translated = await asyncio.to_thread(
-            GoogleTranslator(source='en', target='zh-CN').translate, text
+        # Run GoogleTranslator in a thread pool since it's blocking
+        translated = await asyncio.wait_for(
+            asyncio.to_thread(
+                lambda: GoogleTranslator(source='auto', target=target_lang).translate(text)
+            ),
+            timeout=1.5
         )
         _translation_cache[text] = translated
         return translated
+    except asyncio.TimeoutError:
+        logger.warning(f"Translation timeout for '{text}'")
+        return text
     except Exception as e:
-        logger.error("Translation failed for '%s': %s", text, e)
+        logger.warning(f"Translation failed for '{text}': {e}")
         return text
 
 # Configure logging
@@ -220,14 +227,17 @@ async def _generate_all_thumbnails():
         if not photos:
             break
 
+        sem = asyncio.Semaphore(4)
+        
         async def process_photo(photo):
-            success = await asyncio.to_thread(
-                generate_thumbnail,
-                photo["id"],
-                photo["filepath"],
-                photo["file_type"],
-            )
-            return photo["id"], success
+            async with sem:
+                success = await asyncio.to_thread(
+                    generate_thumbnail,
+                    photo["id"],
+                    photo["filepath"],
+                    photo["file_type"],
+                )
+                return photo["id"], success
 
         results = await asyncio.gather(*(process_photo(p) for p in photos))
 
