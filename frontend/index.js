@@ -34,7 +34,7 @@
 
   const i18n = {
     en: {
-      app_title: "Photo Manager",
+      app_title: "iPhone Photo Manager",
       timeline: "Timeline",
       locations: "Locations",
       load_original: "Load 4K Original",
@@ -93,7 +93,7 @@
       view_original: "View Original File"
     },
     zh: {
-      app_title: "照片管理",
+      app_title: "iPhone 照片管理",
       timeline: "时间线",
       locations: "地点",
       load_original: "加载 4K 原图",

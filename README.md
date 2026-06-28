@@ -6,9 +6,9 @@ A lightweight, local-first iPhone photo browsing and management tool. After expo
 
 ### ✨ Features
 
-A lightweight, local-first web gallery for your iPhone photos. It supports HEIC, Live Photos (MOV), and reverse geocoding without uploading any data to the cloud. Designed with a mobile-responsive UI, timeline grouping, and 4K high-res on-the-fly rendering.
+A lightweight, local-first web gallery for your iPhone photos. It supports HEIC, Live Photos (MOV), and reverse geocoding without uploading any data to the cloud.
 
-To use it, simply export your iPhone photos and copy them into your configured `PHOTOS_DIR` (default is `./photos` in the project root). The tool will automatically scan the folder on startup.
+To use it, simply export your iPhone photos and copy them into your configured `PHOTOS_DIR` (default is `./photos` in the project root, which you can configure in your `.env` file). The tool will automatically scan the folder on startup.
 
 **Expected Directory Structure:**
 
