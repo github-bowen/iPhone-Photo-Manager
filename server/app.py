@@ -227,7 +227,7 @@ async def _generate_all_thumbnails():
         if not photos:
             break
 
-        sem = asyncio.Semaphore(4)
+        sem = asyncio.Semaphore(1)
         
         async def process_photo(photo):
             async with sem:

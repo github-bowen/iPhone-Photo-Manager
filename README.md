@@ -2,7 +2,11 @@
 
 *Read this in other languages: [English](README.md), [中文](README_zh.md).*
 
-A lightweight, local-first iPhone photo browsing and management tool. After exporting your iPhone photos to a local folder, you can browse them via a modern Web interface organized by timeline and geographical location. Fully supports HEIC, Live Photos, and MOV videos.
+This is a lightweight, responsive web application for managing, organizing, and exploring your iPhone photos and videos. It organizes your media by timeline and automatically groups them by geocoded locations using embedded EXIF data.
+
+## Demo
+![Demo Video](assets/demo.webp)
+*Demo showcasing timeline scrolling, location filtering, and language switching.*
 
 ### ✨ Features
 
