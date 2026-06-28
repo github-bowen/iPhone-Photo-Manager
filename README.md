@@ -6,8 +6,9 @@ This is a lightweight, responsive web application for managing, organizing, and 
 
 ## Demo
 <p align="center">
-  <img src="assets/demo1.png" width="45%" />
-  <img src="assets/demo2.png" width="45%" />
+  <img src="assets/demo1.png" width="80%" style="margin-bottom: 20px" />
+  <br />
+  <img src="assets/demo2.png" width="80%" />
 </p>
 *Demo showcasing timeline scrolling, location filtering, and language switching.*
 

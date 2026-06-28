@@ -6,8 +6,9 @@
 
 ## 演示 (Demo)
 <p align="center">
-  <img src="assets/demo1.png" width="45%" />
-  <img src="assets/demo2.png" width="45%" />
+  <img src="assets/demo1.png" width="80%" style="margin-bottom: 20px" />
+  <br />
+  <img src="assets/demo2.png" width="80%" />
 </p>
 *演示展示了时间线滚动、地点分类筛选以及中英文切换功能。*
 
