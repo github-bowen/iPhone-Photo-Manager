@@ -185,6 +185,7 @@ function setupKeyboard() {
 async function init() {
   const langToggle = $("lang-toggle");
   const loadOriginalToggle = $("load-original-toggle");
+  const themeToggle = $("theme-toggle");
 
   try {
     const config = await api("/api/config");
@@ -199,7 +200,16 @@ async function init() {
         else langToggle.classList.remove("active");
     }
 
-    if (config.theme) state.theme = config.theme;
+    if (localStorage.getItem("app_theme")) {
+        state.theme = localStorage.getItem("app_theme");
+    } else if (config.theme) {
+        state.theme = config.theme;
+    }
+    
+    if (themeToggle) {
+        if (state.theme === "dark") themeToggle.classList.add("active");
+        else themeToggle.classList.remove("active");
+    }
 
     if (config.load_original_on_click !== undefined) {
         state.loadOriginalOnClick = config.load_original_on_click;
@@ -235,6 +245,15 @@ async function init() {
       loadTimeline();
       loadLocations();
       resetAndReload();
+    });
+  }
+
+  if (themeToggle) {
+    themeToggle.addEventListener("click", function (e) {
+      this.classList.toggle("active");
+      state.theme = this.classList.contains("active") ? "dark" : "light";
+      localStorage.setItem("app_theme", state.theme);
+      document.body.className = "theme-" + state.theme;
     });
   }
 
