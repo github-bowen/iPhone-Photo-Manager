@@ -9,9 +9,9 @@
 ```text
 ┌─────────────────────────────────────────────────────┐
 │                    Browser (前端)                     │
-│  index.html + index.css + index.js                   │
+│  index.html + index.css + js/ (模块化)                │
 │  ─ 纯静态文件，由 FastAPI StaticFiles 托管            │
-│  ─ Vanilla JS，无框架依赖                             │
+│  ─ Vanilla ES Modules，无打包构建工具依赖             │
 └────────────────────┬────────────────────────────────┘
                      │ HTTP REST API
                      ▼
@@ -71,9 +71,10 @@
 #### 3.4 `database.py` — 数据库层
 单表 `photos`，包含 24 个字段，覆盖文件信息、拍摄参数、GPS、标签和状态。使用 `aiosqlite` 进行异步访问。
 
-#### 3.5 前端架构 (`index.js`)
-纯 Vanilla JS 的单页面应用。
-- **无限滚动**：利用 `IntersectionObserver` 懒加载分页数据。
-- **移动端适配**：通过 CSS Transform 实现了抽屉式的滑动侧边栏。
-- **Live Photo 交互**：鼠标悬停动态创建 `<video>` 标签覆盖原图进行播放。
+#### 3.5 前端架构 (`frontend/js/`)
+基于原生 ES Modules 的模块化单页面应用。
+- **模块化设计**：拆分为 `main.js` (入口), `api.js` (网络), `state.js` (状态), `gallery.js` (照片墙), `modal.js` (大图), `sidebar.js` (侧边栏), `i18n.js` (多语言), `utils.js` (工具)。
+- **虚拟滚动 (DOM Virtualization)**：利用 `IntersectionObserver` 监控照片卡片，智能卸载滑出屏幕的 `<img>` 和 `<video>` 节点，使得渲染数万张照片时内存占用依然保持极低水平。
+- **无限滚动**：懒加载分页数据以实现无缝滚动体验。
+- **Live Photo 交互**：弹窗中动态创建 `<video>` 标签进行实时预览回放。
 - **层级筛选**：地点支持国家→城市层级点击，时间支持月份→具体日期筛选。

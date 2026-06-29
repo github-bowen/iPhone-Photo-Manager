@@ -9,9 +9,9 @@ This document explains the technical architecture, data flows, module design, an
 ```text
 ┌─────────────────────────────────────────────────────┐
 │                    Browser (Frontend)                 │
-│  index.html + index.css + index.js                   │
+│  index.html + index.css + js/ (Modular)              │
 │  ─ Static files served by FastAPI StaticFiles         │
-│  ─ Vanilla JS, no framework dependencies              │
+│  ─ Vanilla ES Modules, no build tool dependencies     │
 └────────────────────┬────────────────────────────────┘
                      │ HTTP REST API
                      ▼
@@ -71,9 +71,10 @@ Uses a KD-Tree based offline reverse geocoder. Coordinates are rounded to 2 deci
 #### 3.4 `database.py` — SQLite Layer
 A single `photos` table with 24 columns covering file info, GPS, EXIF parameters, and metadata tags. Async access via `aiosqlite`.
 
-#### 3.5 Frontend Architecture (`index.js`)
-A single-page application built with Vanilla JS.
-- **Infinite Scrolling**: Uses `IntersectionObserver`.
-- **Mobile Responsive**: Implements a sliding sidebar drawer using CSS transforms.
-- **Live Photos**: Hovering over a thumbnail dynamically creates a `<video autoplay>` overlay.
+#### 3.5 Frontend Architecture (`frontend/js/`)
+A modular single-page application built with Vanilla ES Modules.
+- **Modular Design**: Split into `main.js` (entry), `api.js` (network), `state.js` (state), `gallery.js` (photo grid), `modal.js` (viewer), `sidebar.js` (timeline/locations), `i18n.js` (language), and `utils.js`.
+- **DOM Virtualization**: Uses `IntersectionObserver` to intelligently unload off-screen `<img/>` and `<video>` elements, keeping memory usage minimal even when scrolling through tens of thousands of photos.
+- **Infinite Scrolling**: Lazy-loads paginated data for a seamless scrolling experience.
+- **Live Photos**: Opening a live photo dynamically creates a `<video>` overlay.
 - **Timeline & Locations**: Tree-based filtering (Month -> Day, Country -> City).
