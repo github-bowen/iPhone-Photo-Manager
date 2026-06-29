@@ -37,7 +37,7 @@ iphone-photo-manager/
 ├── frontend/                # Vanilla HTML/CSS/JS frontend (No framework)
 │   ├── index.html           # Page structure
 │   ├── index.css            # Styles (Dark/Light themes, Mobile queries)
-│   └── index.js             # Interaction logic, Gallery rendering, Modal, Sidebar
+│   └── js/                  # JS Modules (Virtual scroll, API, etc.)
 ├── photos/                  # Photo storage directory (Organized by YYYYMM subfolders)
 ├── data/                    # Runtime data (auto-generated, gitignored)
 │   ├── photos.db            # SQLite database
@@ -93,6 +93,8 @@ Place your iPhone photos into the `photos/` directory, ideally grouped by year/m
 *(Hint: You can use AirDrop or USB to export directly. The system automatically pairs `.HEIC` and `.MOV` files for Live Photos).*
 
 #### 4. Start the Server
+
+Ensure you are in the project root directory (e.g. `iPhone-Photo-Manager`), then run:
 
 ```bash
 python -m server.app

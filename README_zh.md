@@ -37,7 +37,7 @@ iphone-photo-manager/
 ├── frontend/                # 纯 HTML/CSS/JS 前端（无框架）
 │   ├── index.html           # 页面结构
 │   ├── index.css            # 样式（深色/浅色主题、移动端媒体查询）
-│   └── index.js             # 交互逻辑、Gallery 渲染、Modal、侧边栏
+│   └── js/                  # 模块化的 JS 逻辑（虚拟滚动、API 等）
 ├── photos/                  # 照片存放目录（按 YYYYMM 子文件夹组织）
 ├── data/                    # 运行时数据（自动生成，已 gitignore）
 │   ├── photos.db            # SQLite 数据库
@@ -91,6 +91,7 @@ copy .env.template .env
 将 iPhone 照片按年月分子文件夹放入 `photos/` 目录。（支持用 AirDrop 或 USB 直接导出，系统会自动配对 Live Photo）。
 
 #### 4. 启动服务
+请确保你当前位于项目根目录（例如 `iPhone-Photo-Manager`）下，然后执行：
 ```bash
 python -m server.app
 ```
