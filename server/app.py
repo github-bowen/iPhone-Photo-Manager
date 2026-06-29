@@ -32,21 +32,24 @@ from server.geocoder import reverse_geocode, batch_reverse_geocode
 
 # Translation cache
 _translation_cache = {}
+_translation_sem = asyncio.Semaphore(10)
 
 async def translate_text(text: str, target_lang: str = 'zh-CN') -> str:
     if not text:
         return text
-    if text in _translation_cache:
-        return _translation_cache[text]
+    cache_key = (text, target_lang)
+    if cache_key in _translation_cache:
+        return _translation_cache[cache_key]
     try:
-        # Run GoogleTranslator in a thread pool since it's blocking
-        translated = await asyncio.wait_for(
-            asyncio.to_thread(
-                lambda: GoogleTranslator(source='auto', target=target_lang).translate(text)
-            ),
-            timeout=1.5
-        )
-        _translation_cache[text] = translated
+        async with _translation_sem:
+            # Run GoogleTranslator in a thread pool since it's blocking
+            translated = await asyncio.wait_for(
+                asyncio.to_thread(
+                    lambda: GoogleTranslator(source='auto', target=target_lang).translate(text)
+                ),
+                timeout=10.0
+            )
+        _translation_cache[cache_key] = translated
         return translated
     except asyncio.TimeoutError:
         logger.warning(f"Translation timeout for '{text}'")
@@ -173,13 +176,17 @@ async def _run_full_scan():
 
         # Process new files
         if new_paths:
-            logger.info("Found %d new files. Extracting metadata...", len(new_paths))
-            new_files_data = await asyncio.to_thread(scan_specific_files, PHOTOS_DIR, new_paths)
-            for i, photo_data in enumerate(new_files_data):
-                await insert_photo(db, photo_data)
-                scan_state["progress"] = i + 1
-                if (i + 1) % 100 == 0:
-                    logger.info("Imported %d / %d new files", i + 1, len(new_paths))
+            logger.info("Found %d new files. Extracting metadata in batches...", len(new_paths))
+            new_paths_list = list(new_paths)
+            batch_size = 100
+            for i in range(0, len(new_paths_list), batch_size):
+                batch = set(new_paths_list[i:i + batch_size])
+                new_files_data = await asyncio.to_thread(scan_specific_files, PHOTOS_DIR, batch)
+                for photo_data in new_files_data:
+                    await insert_photo(db, photo_data)
+                
+                scan_state["progress"] += len(batch)
+                logger.info("Imported %d / %d new files", min(i + batch_size, len(new_paths_list)), len(new_paths_list))
 
         await db.close()
         logger.info("Phase 1 complete: %d active files on disk.", len(disk_paths))
@@ -566,14 +573,26 @@ async def api_get_locations(lang: str = None):
         target_lang = lang if lang else os.getenv("APP_LANGUAGE", "zh")
         if target_lang == "zh":
             unique_locs = {loc["location_name"] for loc in locations if loc.get("location_name")}
-            translations = await asyncio.gather(*(translate_text(loc) for loc in unique_locs))
-            trans_map = dict(zip(unique_locs, translations))
+            unique_countries = {loc.split(", ")[-1].strip() for loc in unique_locs}
+            unique_cities = {loc.split(", ")[0].strip() for loc in unique_locs}
+            
+            all_to_translate = unique_locs | unique_countries | unique_cities
+            translations = await asyncio.gather(*(translate_text(text) for text in all_to_translate))
+            trans_map = dict(zip(all_to_translate, translations))
+            
             for loc in locations:
-                if loc.get("location_name"):
-                    loc["display_location"] = trans_map[loc["location_name"]]
+                name = loc.get("location_name")
+                if name:
+                    loc["display_location"] = trans_map[name]
+                    loc["display_country"] = trans_map[name.split(", ")[-1].strip()]
+                    loc["display_city"] = trans_map[name.split(", ")[0].strip()]
         else:
             for loc in locations:
-                loc["display_location"] = loc.get("location_name")
+                name = loc.get("location_name")
+                if name:
+                    loc["display_location"] = name
+                    loc["display_country"] = name.split(", ")[-1].strip()
+                    loc["display_city"] = name.split(", ")[0].strip()
         return locations
     finally:
         await db.close()

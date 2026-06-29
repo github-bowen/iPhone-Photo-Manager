@@ -55,6 +55,35 @@ def batch_reverse_geocode(coordinates: list[tuple[float, float]]) -> list[Option
             # Map country code to full country name
             country = cc
             if cc:
+                if cc == 'CN':
+                    import requests
+                    try:
+                        url = f"https://api.bigdatacloud.net/data/reverse-geocode-client?latitude={coord_key[0]}&longitude={coord_key[1]}&localityLanguage=zh"
+                        resp = requests.get(url, timeout=5)
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            c_name = data.get("countryName", "中国")
+                            if c_name == "中华人民共和国":
+                                c_name = "中国"
+                            p_sub = data.get("principalSubdivision", "")
+                            city_name = data.get("city", "")
+                            
+                            c_parts = []
+                            if city_name:
+                                c_parts.append(city_name)
+                            if p_sub and p_sub != city_name:
+                                c_parts.append(p_sub)
+                            if c_name:
+                                c_parts.append(c_name)
+                                
+                            if c_parts:
+                                loc_str = ", ".join(c_parts)
+                                _geocode_cache[coord_key] = loc_str
+                                logger.info("BDC Geocoded %s -> %s", coord_key, loc_str)
+                                continue
+                    except Exception as e:
+                        logger.error("BDC geocode failed for %s: %s", coord_key, e)
+
                 try:
                     c = pycountry.countries.get(alpha_2=cc)
                     if c:

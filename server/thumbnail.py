@@ -85,51 +85,51 @@ def generate_thumbnail(photo_id: int, filepath: str, file_type: str) -> bool:
 def _generate_image_thumbnail(filepath: str, full_path: str) -> bool:
     """Generate thumbnails from an image file (HEIC, JPG, PNG)."""
     try:
-        img = Image.open(full_path)
+        with Image.open(full_path) as img:
+            # Handle EXIF orientation
+            try:
+                exif = img.getexif()
+                orientation = exif.get(274)  # Orientation tag
+                if orientation:
+                    rotation_map = {
+                        3: 180,
+                        6: 270,
+                        8: 90,
+                    }
+                    if orientation in rotation_map:
+                        img = img.rotate(rotation_map[orientation], expand=True)
+                    elif orientation in (2, 4, 5, 7):
+                        # Mirror cases
+                        img = img.transpose(Image.FLIP_LEFT_RIGHT)
+                        if orientation == 4:
+                            img = img.rotate(180, expand=True)
+                        elif orientation == 5:
+                            img = img.rotate(270, expand=True)
+                        elif orientation == 7:
+                            img = img.rotate(90, expand=True)
+            except Exception:
+                pass
 
-        # Handle EXIF orientation
-        try:
-            exif = img.getexif()
-            orientation = exif.get(274)  # Orientation tag
-            if orientation:
-                rotation_map = {
-                    3: 180,
-                    6: 270,
-                    8: 90,
-                }
-                if orientation in rotation_map:
-                    img = img.rotate(rotation_map[orientation], expand=True)
-                elif orientation in (2, 4, 5, 7):
-                    # Mirror cases
-                    img = img.transpose(Image.FLIP_LEFT_RIGHT)
-                    if orientation == 4:
-                        img = img.rotate(180, expand=True)
-                    elif orientation == 5:
-                        img = img.rotate(270, expand=True)
-                    elif orientation == 7:
-                        img = img.rotate(90, expand=True)
-        except Exception:
-            pass
+            # Convert to RGB if necessary (handles RGBA, P mode etc.)
+            if img.mode not in ("RGB", "L"):
+                img = img.convert("RGB")
 
-        # Convert to RGB if necessary (handles RGBA, P mode etc.)
-        if img.mode not in ("RGB", "L"):
-            img = img.convert("RGB")
+            for size_name, max_dim in SIZES.items():
+                out_path = get_thumbnail_path(filepath, size_name)
+                os.makedirs(os.path.dirname(out_path), exist_ok=True)
 
-        for size_name, max_dim in SIZES.items():
-            out_path = get_thumbnail_path(filepath, size_name)
-            os.makedirs(os.path.dirname(out_path), exist_ok=True)
+                # Calculate dimensions maintaining aspect ratio
+                w, h = img.size
+                if w >= h:
+                    new_w = max_dim
+                    new_h = int(h * (max_dim / w))
+                else:
+                    new_h = max_dim
+                    new_w = int(w * (max_dim / h))
 
-            # Calculate dimensions maintaining aspect ratio
-            w, h = img.size
-            if w >= h:
-                new_w = max_dim
-                new_h = int(h * (max_dim / w))
-            else:
-                new_h = max_dim
-                new_w = int(w * (max_dim / h))
-
-            thumb = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
-            thumb.save(out_path, "WEBP", quality=THUMBNAIL_QUALITY)
+                thumb = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+                thumb.save(out_path, "WEBP", quality=THUMBNAIL_QUALITY)
+                thumb.close()
 
         return True
     except Exception as e:

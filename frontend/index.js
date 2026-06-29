@@ -909,8 +909,7 @@
       const partsEn = loc.location_name.split(", ");
       const countryEn = partsEn[partsEn.length - 1];
       
-      const partsDisp = loc.display_location.split(", ");
-      const countryDisp = partsDisp[partsDisp.length - 1];
+      const countryDisp = loc.display_country || (loc.display_location ? loc.display_location.split(", ").pop() : countryEn);
 
       if (!countries[countryEn]) {
         countries[countryEn] = { display: countryDisp, count: 0, cities: [] };
@@ -963,7 +962,7 @@
           const partsDisp = loc.display_location.split(", ");
           
           let cityEn = cleanCity(partsEn[0]);
-          let cityDisp = cleanCity(partsDisp[0]);
+          let cityDisp = loc.display_city || cleanCity(partsDisp[0]);
           if (state.language === "zh" && (cityEn.toLowerCase() === "zuerich" || cityEn === "Zurich")) cityDisp = "苏黎世";
           else if (state.language === "en" && (cityDisp.toLowerCase() === "zuerich" || cityDisp === "苏黎世")) cityDisp = "Zurich";
           
