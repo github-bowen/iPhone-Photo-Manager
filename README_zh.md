@@ -66,8 +66,11 @@ pip install -r requirements.txt
 #### 2. 配置
 
 ```bash
-# 复制环境变量模板并按需修改
+# macOS/Linux
 cp .env.template .env
+
+# Windows (CMD/PowerShell)
+copy .env.template .env
 ```
 
 主要配置项：
@@ -89,11 +92,14 @@ cp .env.template .env
 
 #### 4. 启动服务
 ```bash
-PYTHONPATH=. python3 server/app.py
+python -m server.app
 ```
 启动完成后在浏览器打开：**http://127.0.0.1:8000**
 
 #### 5. 停止服务
+在运行服务的终端中按下 `Ctrl+C` 即可停止服务。
+
+如果是后台运行（仅 macOS/Linux）：
 ```bash
 ./stop.sh
 ```

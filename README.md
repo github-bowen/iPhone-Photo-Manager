@@ -66,8 +66,11 @@ pip install -r requirements.txt
 #### 2. Configuration
 
 ```bash
-# Copy the environment template and modify as needed
+# macOS/Linux
 cp .env.template .env
+
+# Windows (CMD/PowerShell)
+copy .env.template .env
 ```
 
 Key configuration options (`.env`):
@@ -92,7 +95,7 @@ Place your iPhone photos into the `photos/` directory, ideally grouped by year/m
 #### 4. Start the Server
 
 ```bash
-PYTHONPATH=. python3 server/app.py
+python -m server.app
 ```
 
 On the first launch, the server will automatically:
@@ -104,6 +107,9 @@ Once started, open your browser and navigate to: **http://127.0.0.1:8000**
 
 #### 5. Stop the Server
 
+Press `Ctrl+C` in the terminal where the server is running to stop it.
+
+If running in the background (macOS/Linux only):
 ```bash
 ./stop.sh
 ```
