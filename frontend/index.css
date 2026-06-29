@@ -252,12 +252,14 @@ body {
 }
 
 .sidebar-section {
-  padding: var(--space-md) var(--space-lg);
+  padding: 0 var(--space-lg);
+  padding-bottom: var(--space-md);
   flex: 1;
   overflow-y: auto;
 }
 
 .sidebar-section-title {
+  padding-top: var(--space-md);
   font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -327,12 +329,14 @@ body {
 
 /* --- Header / Toolbar --- */
 .header {
-  height: var(--header-height);
+  min-height: var(--header-height);
+  height: auto;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  padding: 0 var(--space-lg);
+  padding: var(--space-sm) var(--space-lg);
   gap: var(--space-md);
   flex-shrink: 0;
 }
@@ -379,6 +383,7 @@ body {
 
 .filter-group {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-sm);
 }
 
