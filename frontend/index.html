@@ -67,15 +67,15 @@
         </div>
 
         <div class="header-actions">
-          <button class="action-btn" id="autoplay-btn" title="Slideshow / 幻灯片" style="background: var(--accent-gradient); color: white; border: none; padding: 4px 12px; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 4px;">
-            ▶️ <span data-i18n="slideshow" style="font-size: 12px;">Slideshow</span>
+          <button class="header-action-btn" id="autoplay-btn" title="Slideshow / 幻灯片">
+            ▶️ <span data-i18n="slideshow" style="font-size: 13px;">幻灯片</span>
           </button>
-          <div class="toggle-pill" id="sort-toggle" title="Sort Order / 排序" style="width: 60px;">
+          <div class="toggle-pill active" id="sort-toggle" title="Sort Order / 排序">
             <div class="toggle-pill-bg"></div>
             <div class="toggle-pill-option left">🔽</div>
             <div class="toggle-pill-option right">🔼</div>
           </div>
-          <div class="toggle-pill" id="theme-toggle" title="Theme / 主题" style="width: 60px;">
+          <div class="toggle-pill" id="theme-toggle" title="Theme / 主题">
             <div class="toggle-pill-bg"></div>
             <div class="toggle-pill-option left"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg></div>
             <div class="toggle-pill-option right"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg></div>
@@ -107,7 +107,7 @@
   <div class="modal-backdrop" id="modal-backdrop">
     <button class="modal-close" id="modal-close" data-i18n-title="close_btn">✕</button>
     <div id="autoplay-controls" style="display: none; position: absolute; top: 20px; left: 20px; z-index: 60;">
-      <button id="autoplay-stop-btn" style="background: rgba(255,50,50,0.8); color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">⏹ Stop Auto-play</button>
+      <button id="autoplay-stop-btn" class="autoplay-btn-stop">⏹ 停止幻灯片 / Stop</button>
     </div>
     <div class="modal-content">
       <div class="modal-image-container" id="modal-image-container">
@@ -122,49 +122,52 @@
   </div>
 
   <!-- Autoplay Config Modal -->
-  <div id="autoplay-config-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: var(--bg-overlay); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
-    <div style="background: var(--bg-primary); padding: var(--space-lg); border-radius: var(--radius-lg); width: 400px; max-width: 90vw; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
-      <h3 style="margin-top: 0; margin-bottom: var(--space-md); color: var(--text-primary);">▶️ <span data-i18n="slideshow_config">Slideshow Configuration</span></h3>
-      
-      <div style="margin-bottom: var(--space-md);">
-        <label style="display: block; font-size: 14px; margin-bottom: 4px; color: var(--text-secondary);" data-i18n="date_range">Date Range</label>
-        <div style="display: flex; gap: 8px;">
+  <div id="autoplay-config-modal" class="autoplay-modal-overlay">
+    <div class="autoplay-modal-content">
+      <h3 class="autoplay-modal-title">▶️ <span data-i18n="slideshow_config">幻灯片播放设置</span></h3>
+
+      <div class="autoplay-modal-section">
+        <label class="autoplay-modal-label">📅 日期范围</label>
+        <div class="autoplay-modal-row">
           <input type="date" id="autoplay-date-from" class="date-input" style="flex: 1;">
           <input type="date" id="autoplay-date-to" class="date-input" style="flex: 1;">
         </div>
       </div>
 
-      <div style="margin-bottom: var(--space-md);">
-        <label style="display: block; font-size: 14px; margin-bottom: 4px; color: var(--text-secondary);" data-i18n="locations">Location</label>
-        <select id="autoplay-location" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border-subtle); background: var(--bg-secondary); color: var(--text-primary);">
-          <option value="">All Locations</option>
-        </select>
-      </div>
-
-      <div style="margin-bottom: var(--space-md);">
-        <label style="display: block; font-size: 14px; margin-bottom: 4px; color: var(--text-secondary);">Media Types</label>
-        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-          <label style="display: flex; align-items: center; gap: 4px; color: var(--text-primary); cursor: pointer;"><input type="checkbox" id="autoplay-type-photo" checked> Photos</label>
-          <label style="display: flex; align-items: center; gap: 4px; color: var(--text-primary); cursor: pointer;"><input type="checkbox" id="autoplay-type-video" checked> Videos</label>
-          <label style="display: flex; align-items: center; gap: 4px; color: var(--text-primary); cursor: pointer;"><input type="checkbox" id="autoplay-type-screenshot"> Screenshots</label>
+      <div class="autoplay-modal-section">
+        <label class="autoplay-modal-label">📍 地点范围 (国家)</label>
+        <div id="autoplay-location-container" class="autoplay-checkbox-group">
+          <!-- Checkboxes injected by JS -->
         </div>
       </div>
 
-      <div style="margin-bottom: var(--space-md);">
-        <label style="display: block; font-size: 14px; margin-bottom: 4px; color: var(--text-secondary);">Duration per slide (seconds)</label>
-        <input type="number" id="autoplay-duration" value="3" min="1" max="10" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border-subtle); background: var(--bg-secondary); color: var(--text-primary);">
+      <div class="autoplay-modal-section">
+        <label class="autoplay-modal-label">🖼️ 媒体类型</label>
+        <div class="autoplay-checkbox-group">
+          <label class="autoplay-checkbox-label"><input type="checkbox" id="autoplay-type-photo" checked> 照片</label>
+          <label class="autoplay-checkbox-label"><input type="checkbox" id="autoplay-type-video" checked> 视频</label>
+          <label class="autoplay-checkbox-label"><input type="checkbox" id="autoplay-type-screenshot"> 截图</label>
+        </div>
       </div>
 
-      <div style="margin-bottom: var(--space-lg);">
-        <label style="display: flex; align-items: center; gap: 6px; color: var(--text-primary); cursor: pointer; font-size: 14px;">
+      <div class="autoplay-modal-section">
+        <label class="autoplay-modal-label">⏱️ 每张停留时长</label>
+        <div class="autoplay-range-row">
+          <input type="range" id="autoplay-duration" value="3" min="1" max="10" step="1" style="flex: 1; accent-color: var(--accent-purple);">
+          <span id="autoplay-duration-display" style="min-width: 32px; text-align: center; color: var(--text-primary); font-weight: bold; font-size: 14px;">3s</span>
+        </div>
+      </div>
+
+      <div class="autoplay-modal-section">
+        <label class="autoplay-checkbox-label" style="padding: 12px; background: var(--bg-tertiary); border: 1px solid var(--border-subtle); border-radius: 12px; font-weight: 600;">
           <input type="checkbox" id="autoplay-wait-video" checked>
-          Wait for video/Live Photo to finish playing
+          播放完整视频 / Live 图后再切换
         </label>
       </div>
 
-      <div style="display: flex; gap: 12px; justify-content: flex-end;">
-        <button id="autoplay-cancel-btn" style="padding: 8px 16px; border-radius: 6px; border: 1px solid var(--border-subtle); background: var(--bg-secondary); color: var(--text-primary); cursor: pointer;">Cancel</button>
-        <button id="autoplay-start-btn" style="padding: 8px 16px; border-radius: 6px; border: none; background: var(--accent); color: white; font-weight: bold; cursor: pointer;">Start Slideshow</button>
+      <div class="autoplay-actions">
+        <button id="autoplay-cancel-btn" class="autoplay-btn-cancel">取消</button>
+        <button id="autoplay-start-btn" class="autoplay-btn-start">▶ 开始播放</button>
       </div>
     </div>
   </div>
@@ -178,6 +181,6 @@
     </div>
   </div>
 
-  <script type="module" src="/js/main.js"></script>
+  <script type="module" src="/js/main.js?v=2"></script>
 </body>
 </html>

@@ -59,7 +59,7 @@ export const i18n = {
     country_only: "Country / City View",
     actions_sec: "Actions",
     slideshow: "Slideshow",
-    slideshow_config: "Slideshow Configuration"
+    slideshow_config: "Slideshow Configuration",
     view_original: "View Original File"
   },
   zh: {

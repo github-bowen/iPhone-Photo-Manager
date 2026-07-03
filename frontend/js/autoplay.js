@@ -4,7 +4,7 @@ import { resetAndReload, loadPhotos } from './gallery.js';
 import { openModal, closeModal, renderModalContent } from './modal.js';
 
 let autoplayTimer = null;
-let isAutoplaying = false;
+export let isAutoplaying = false;
 
 export function initAutoplay() {
   const btn = $('autoplay-btn');
@@ -12,14 +12,23 @@ export function initAutoplay() {
   const cancelBtn = $('autoplay-cancel-btn');
   const startBtn = $('autoplay-start-btn');
   const stopBtn = $('autoplay-stop-btn');
-  
+
+  // Move modal to document.body so it's not affected by any ancestor's
+  // backdrop-filter / stacking-context that could clip position:fixed children
+  if (modal && modal.parentElement !== document.body) {
+    document.body.appendChild(modal);
+  }
+
   if (btn) {
-    btn.addEventListener('click', openAutoplayConfig);
+    btn.addEventListener('click', function(event) {
+      console.log('Autoplay button clicked');
+      openAutoplayConfig(event);
+    });
   }
   
   if (cancelBtn) {
     cancelBtn.addEventListener('click', () => {
-      modal.style.display = 'none';
+      modal.classList.remove('active');
     });
   }
   
@@ -34,36 +43,76 @@ export function initAutoplay() {
 
 function openAutoplayConfig() {
   const modal = $('autoplay-config-modal');
+  console.log('openAutoplayConfig called, modal element:', modal);
+  if (!modal) {
+    console.error('Modal element not found');
+    return;
+  }
+  console.log('Modal current display:', modal.style.display);
   
   // Pre-fill dates
   $('autoplay-date-from').value = state.dateFrom || "";
   $('autoplay-date-to').value = state.dateTo || "";
-  
-  // Pre-fill locations
-  const locSelect = $('autoplay-location');
-  // keep the "All Locations" option
-  locSelect.innerHTML = '<option value="">All Locations</option>';
-  for (const loc of state.locations) {
-    const option = document.createElement('option');
-    option.value = loc.location_name;
-    option.textContent = `${loc.display_location} (${loc.count})`;
-    if (state.activeLocation === loc.location_name) {
-      option.selected = true;
+
+  // Pre-fill locations by country
+  const locContainer = $('autoplay-location-container');
+  if (locContainer) {
+    locContainer.innerHTML = '';
+    
+    // Aggregate locations by country
+    const countries = {};
+    for (const loc of state.locations) {
+      const parts = loc.display_location ? loc.display_location.split(', ') : [];
+      const country = loc.display_country || (parts.length > 0 ? parts[parts.length - 1] : "Unknown");
+      if (!countries[country]) countries[country] = 0;
+      countries[country] += loc.count;
     }
-    locSelect.appendChild(option);
+    
+    // Convert to array and sort by count descending
+    const countryArray = Object.entries(countries)
+      .map(([name, count]) => ({name, count}))
+      .sort((a,b) => b.count - a.count);
+    
+    // Check which countries are currently active
+    const activeCountries = state.activeCountry ? state.activeCountry.split(',') : [];
+    
+    for (const c of countryArray) {
+      const label = document.createElement('label');
+      label.className = 'autoplay-checkbox-label';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.className = 'autoplay-country-cb';
+      cb.value = c.name;
+      // If we had active filters, check them; otherwise don't check any (or check all by default?)
+      // Let's leave them unchecked by default, or checked if they match activeCountry
+      if (activeCountries.includes(c.name)) {
+        cb.checked = true;
+      }
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(` ${c.name} (${c.count})`));
+      locContainer.appendChild(label);
+    }
   }
-  
+
   // Pre-fill type based on current active filter
   const isAll = state.activeFilter === "all";
   $('autoplay-type-photo').checked = isAll || state.activeFilter.includes("HEIC");
   $('autoplay-type-video').checked = isAll || state.activeFilter.includes("MOV");
   $('autoplay-type-screenshot').checked = isAll || state.activeFilter.includes("PNG") || state.activeFilter === "PNG";
-  
-  modal.style.display = 'flex';
+
+  // Hook up duration slider display
+  const durSlider = $('autoplay-duration');
+  const durDisplay = $('autoplay-duration-display');
+  if (durSlider && durDisplay) {
+    durSlider.oninput = () => { durDisplay.textContent = durSlider.value + 's'; };
+  }
+
+  modal.classList.add('active');
+
 }
 
 async function startAutoplay() {
-  $('autoplay-config-modal').style.display = 'none';
+  $('autoplay-config-modal').classList.remove('active');
   
   // Update state filters
   const dateFrom = $('autoplay-date-from').value;
@@ -71,8 +120,10 @@ async function startAutoplay() {
   state.dateFrom = dateFrom ? dateFrom : null;
   state.dateTo = dateTo ? dateTo : null;
   
-  const loc = $('autoplay-location').value;
-  state.activeLocation = loc ? loc : null;
+  const countryCheckboxes = document.querySelectorAll('.autoplay-country-cb:checked');
+  const countries = Array.from(countryCheckboxes).map(cb => cb.value);
+  state.activeCountry = countries.length > 0 ? countries.join(',') : null;
+  state.activeLocation = null; // Clear exact location filter to avoid conflicts
   
   const wantsPhoto = $('autoplay-type-photo').checked;
   const wantsVideo = $('autoplay-type-video').checked;
@@ -148,8 +199,12 @@ async function autoplayLoop() {
     return;
   }
   
-  const waitVideo = $('autoplay-wait-video').checked;
-  const durationStr = $('autoplay-duration').value;
+  // Read from modal specific controls if they exist, otherwise fallback to main config
+  const waitVideoModal = $('modal-autoplay-wait-video');
+  const durationModal = $('modal-autoplay-duration');
+  
+  const waitVideo = waitVideoModal ? waitVideoModal.checked : $('autoplay-wait-video').checked;
+  const durationStr = durationModal ? durationModal.value : $('autoplay-duration').value;
   const durationMs = (parseInt(durationStr) || 3) * 1000;
   
   let isVideoOrLive = photo.file_type === "MOV" || photo.is_live_photo;
@@ -221,4 +276,10 @@ export function stopAutoplay() {
   isAutoplaying = false;
   if (autoplayTimer) clearTimeout(autoplayTimer);
   $('autoplay-controls').style.display = 'none';
+}
+
+export function startAutoplayFromCurrent() {
+  isAutoplaying = true;
+  $('autoplay-controls').style.display = 'block';
+  playNextSlide();
 }

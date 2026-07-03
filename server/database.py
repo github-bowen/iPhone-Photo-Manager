@@ -153,8 +153,13 @@ async def get_photos(
         params.extend([f"{cq}%", f"% {cq}%"])
 
     if country:
-        conditions.append("(location_name = ? OR location_name LIKE ?)")
-        params.extend([country, f"%, {country}"])
+        countries = [c.strip() for c in country.split(",") if c.strip()]
+        if countries:
+            country_conds = []
+            for c in countries:
+                country_conds.append("(location_name = ? OR location_name LIKE ?)")
+                params.extend([c, f"%, {c}"])
+            conditions.append("(" + " OR ".join(country_conds) + ")")
 
     if date_from:
         conditions.append("taken_at >= ?")

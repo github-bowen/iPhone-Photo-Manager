@@ -1,6 +1,7 @@
 import { state } from './state.js';
 import { t } from './i18n.js';
 import { $, formatDate, formatTime, formatFileSize, formatDuration } from './utils.js';
+import { isAutoplaying, startAutoplayFromCurrent, stopAutoplay } from './autoplay.js';
 
 export function openModal(index) {
   state.modalPhotoIndex = index;
@@ -190,6 +191,108 @@ function renderModalInfo(photo) {
   if (tagsSection.childElementCount > 1) {
     modalInfo.appendChild(tagsSection);
   }
+
+  // Autoplay inline section
+  const autoplaySec = createInfoSection("▶ " + (t("slideshow") || "幻灯片播放"));
+  
+  // Enable toggle
+  const enableRow = document.createElement("div");
+  enableRow.className = "modal-info-row";
+  enableRow.style.alignItems = "center";
+  enableRow.style.cursor = "pointer";
+  
+  const enableLabel = document.createElement("span");
+  enableLabel.className = "modal-info-label";
+  enableLabel.textContent = "启用 / Enable";
+  
+  const enableToggle = document.createElement("input");
+  enableToggle.type = "checkbox";
+  enableToggle.checked = isAutoplaying;
+  enableToggle.style.accentColor = "var(--accent-purple)";
+  enableToggle.style.width = "16px";
+  enableToggle.style.height = "16px";
+  
+  enableRow.appendChild(enableLabel);
+  enableRow.appendChild(enableToggle);
+  autoplaySec.appendChild(enableRow);
+
+  // Settings wrapper
+  const settingsWrapper = document.createElement("div");
+  settingsWrapper.style.display = isAutoplaying ? "block" : "none";
+  settingsWrapper.style.marginTop = "8px";
+  settingsWrapper.style.padding = "8px";
+  settingsWrapper.style.background = "var(--bg-tertiary)";
+  settingsWrapper.style.borderRadius = "8px";
+
+  // Duration
+  const durLabel = document.createElement("div");
+  durLabel.style.fontSize = "12px";
+  durLabel.style.color = "var(--text-secondary)";
+  durLabel.style.marginBottom = "4px";
+  durLabel.textContent = "停留时长 / Duration";
+  
+  const durFlex = document.createElement("div");
+  durFlex.style.display = "flex";
+  durFlex.style.gap = "8px";
+  durFlex.style.alignItems = "center";
+  durFlex.style.marginBottom = "12px";
+  
+  const durSlider = document.createElement("input");
+  durSlider.type = "range";
+  durSlider.id = "modal-autoplay-duration";
+  durSlider.min = "1";
+  durSlider.max = "10";
+  durSlider.value = "3";
+  durSlider.style.flex = "1";
+  durSlider.style.accentColor = "var(--accent-purple)";
+  
+  const durVal = document.createElement("span");
+  durVal.style.fontSize = "12px";
+  durVal.style.fontWeight = "bold";
+  durVal.textContent = durSlider.value + "s";
+  durSlider.oninput = () => durVal.textContent = durSlider.value + "s";
+  
+  durFlex.appendChild(durSlider);
+  durFlex.appendChild(durVal);
+  
+  settingsWrapper.appendChild(durLabel);
+  settingsWrapper.appendChild(durFlex);
+
+  // Wait video checkbox
+  const waitVideoRow = document.createElement("label");
+  waitVideoRow.style.display = "flex";
+  waitVideoRow.style.alignItems = "center";
+  waitVideoRow.style.gap = "6px";
+  waitVideoRow.style.fontSize = "12px";
+  waitVideoRow.style.color = "var(--text-secondary)";
+  waitVideoRow.style.cursor = "pointer";
+  
+  const waitVideoCb = document.createElement("input");
+  waitVideoCb.type = "checkbox";
+  waitVideoCb.id = "modal-autoplay-wait-video";
+  waitVideoCb.checked = true;
+  waitVideoCb.style.accentColor = "var(--accent-purple)";
+  
+  waitVideoRow.appendChild(waitVideoCb);
+  waitVideoRow.appendChild(document.createTextNode("播放完整视频/Live图"));
+  
+  settingsWrapper.appendChild(waitVideoRow);
+  autoplaySec.appendChild(settingsWrapper);
+  
+  enableRow.onclick = (e) => {
+      if (e.target !== enableToggle) {
+          enableToggle.checked = !enableToggle.checked;
+      }
+      if (enableToggle.checked) {
+          settingsWrapper.style.display = "block";
+          if (!isAutoplaying) startAutoplayFromCurrent();
+      } else {
+          settingsWrapper.style.display = "none";
+          if (isAutoplaying) stopAutoplay();
+      }
+  };
+  
+  modalInfo.appendChild(autoplaySec);
 
   const actionsSection = createInfoSection(t("actions_sec"));
   const viewOriginalBtn = document.createElement("button");

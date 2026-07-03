@@ -181,6 +181,29 @@ function setupKeyboard() {
       }
     });
   }
+
+  let wheelTimeout = null;
+  if (modalImageContainer) {
+    modalImageContainer.addEventListener("wheel", function (e) {
+      if (state.modalPhotoIndex < 0) return;
+      e.preventDefault();
+      
+      if (wheelTimeout) return;
+      wheelTimeout = setTimeout(() => { wheelTimeout = null; }, 400);
+      
+      if (e.deltaY > 0 || e.deltaX > 0) {
+        if (state.modalPhotoIndex < state.photos.length - 1) {
+          state.modalPhotoIndex++;
+          renderModalContent();
+        }
+      } else if (e.deltaY < 0 || e.deltaX < 0) {
+        if (state.modalPhotoIndex > 0) {
+          state.modalPhotoIndex--;
+          renderModalContent();
+        }
+      }
+    }, { passive: false });
+  }
 }
 
 async function init() {
