@@ -281,5 +281,5 @@ export function stopAutoplay() {
 export function startAutoplayFromCurrent() {
   isAutoplaying = true;
   $('autoplay-controls').style.display = 'block';
-  playNextSlide();
+  autoplayLoop();
 }
