@@ -105,20 +105,21 @@
 
   <!-- Photo Detail Modal -->
   <div class="modal-backdrop" id="modal-backdrop">
-    <!-- Floating Autoplay Toolbar -->
-    <div id="modal-autoplay-toolbar" style="display: none; position: absolute; top: 20px; left: 20px; z-index: 60; align-items: center; gap: 16px; background: rgba(255,255,255,0.15); backdrop-filter: blur(12px); padding: 8px 20px; border-radius: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.3);">
+    <!-- Inline Autoplay Toolbar (Injected into modal-info dynamically) -->
+    <div id="modal-autoplay-toolbar" style="display: none; align-items: center; justify-content: space-between; background: var(--bg-tertiary); padding: 12px; border-radius: 12px; border: 1px solid var(--border-subtle); margin-bottom: 16px; margin-top: 8px;">
       
-      <button id="modal-autoplay-toggle" style="background: var(--accent-purple); border: none; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; font-size: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">▶</button>
-      
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <label style="color: white; font-size: 12px; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">⏱️</label>
-        <input type="range" id="modal-autoplay-duration" value="3" min="1" max="10" step="1" style="width: 60px; accent-color: var(--accent-purple);">
-        <span id="modal-autoplay-dur-val" style="color: white; font-size: 13px; font-weight: bold; min-width: 20px; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">3s</span>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <button id="modal-autoplay-toggle" style="background: var(--accent-purple); border: none; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; font-size: 14px; flex-shrink: 0;">▶</button>
+        
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <input type="range" id="modal-autoplay-duration" value="3" min="1" max="10" step="1" style="width: 50px; accent-color: var(--accent-purple);">
+          <span id="modal-autoplay-dur-val" style="color: var(--text-primary); font-size: 13px; font-weight: bold; min-width: 20px;">3s</span>
+        </div>
       </div>
       
-      <div style="display: flex; align-items: center; gap: 6px; border-left: 1px solid rgba(255,255,255,0.3); padding-left: 16px;">
+      <div style="display: flex; align-items: center; gap: 6px;">
         <input type="checkbox" id="modal-autoplay-wait-video" checked style="accent-color: var(--accent-purple); cursor: pointer; width: 14px; height: 14px;">
-        <label for="modal-autoplay-wait-video" style="color: white; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; text-shadow: 0 1px 2px rgba(0,0,0,0.5);" data-i18n="autoplay_wait_video"> Wait Video </label>
+        <label for="modal-autoplay-wait-video" style="color: var(--text-secondary); font-size: 12px; cursor: pointer; white-space: nowrap;" data-i18n="autoplay_wait_video"> Wait Video </label>
       </div>
     </div>
 

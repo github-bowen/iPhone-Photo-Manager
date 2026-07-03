@@ -11,12 +11,6 @@ export function openModal(index) {
   const modalBackdrop = $("modal-backdrop");
   modalBackdrop.classList.add("active");
   
-  // Show the floating toolbar
-  const toolbar = document.getElementById("modal-autoplay-toolbar");
-  if (toolbar) {
-      toolbar.style.display = "flex";
-  }
-  
   document.body.style.overflow = "hidden";
 }
 
@@ -139,12 +133,25 @@ export function renderModalContent() {
 function renderModalInfo(photo) {
   const modalInfo = $("modal-info");
   const modalImageContainer = $("modal-image-container");
+  
+  // Rescue the toolbar so it doesn't get wiped
+  const toolbar = document.getElementById("modal-autoplay-toolbar");
+  if (toolbar) {
+      document.body.appendChild(toolbar);
+  }
+  
   modalInfo.replaceChildren();
 
   const title = document.createElement("div");
   title.className = "modal-info-title";
   title.textContent = photo.filename || "Untitled";
   modalInfo.appendChild(title);
+  
+  // Inject the toolbar right under the title
+  if (toolbar) {
+      toolbar.style.display = "flex";
+      modalInfo.appendChild(toolbar);
+  }
 
   if (photo.display_location) {
     const loc = document.createElement("div");
