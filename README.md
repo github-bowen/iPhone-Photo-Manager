@@ -16,6 +16,9 @@ This is a lightweight, responsive web application for managing, organizing, and 
 
 A lightweight, local-first web gallery for your iPhone photos. It supports HEIC, Live Photos (MOV), and reverse geocoding without uploading any data to the cloud.
 
+- **Immersive Slideshow (Autoplay):** Sit back and enjoy your memories with a highly configurable slideshow. Filter by date, country, and media type, adjust playback speed, and choose whether to play full videos/Live Photos before advancing.
+- **Glassmorphism UI:** A premium, modern interface with smooth micro-animations and beautiful light/dark themes.
+
 To use it, simply export your iPhone photos and copy them into your configured `PHOTOS_DIR` (default is `./photos` in the project root, which you can configure in your `.env` file). The tool will automatically scan the folder on startup.
 
 **Expected Directory Structure:**
@@ -120,4 +123,5 @@ If running in the background (macOS/Linux only):
 - **Browsing**: Scroll down to load more. Daily headers display your trajectory.
 - **Timeline**: Click a month in the sidebar to filter. Click the arrow to expand and filter by a specific day.
 - **Locations**: Click a country in the sidebar to view all photos from that country, or expand to select a specific city.
-- **High-Res Viewing**: Click a photo to open the modal. If `LOAD_ORIGINAL_ON_CLICK` is false, click "View Original File" to render and cache the full-quality image.
+- **High-Res Viewing**: Click a photo to open the modal. Use arrow keys, mouse wheel, or on-screen buttons to navigate. If `LOAD_ORIGINAL_ON_CLICK` is false, click "View Original File" to render and cache the full-quality image.
+- **Slideshow**: Click the "Slideshow / 幻灯片" button in the top bar to configure and start an automated presentation of your photos and videos. You can also start the slideshow directly from any individual photo's detail view using the inline toggle.

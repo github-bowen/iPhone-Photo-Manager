@@ -73,7 +73,7 @@ A single `photos` table with 24 columns covering file info, GPS, EXIF parameters
 
 #### 3.5 Frontend Architecture (`frontend/js/`)
 A modular single-page application built with Vanilla ES Modules.
-- **Modular Design**: Split into `main.js` (entry), `api.js` (network), `state.js` (state), `gallery.js` (photo grid), `modal.js` (viewer), `sidebar.js` (timeline/locations), `i18n.js` (language), and `utils.js`.
+- **Modular Design**: Split into `main.js` (entry), `api.js` (network), `state.js` (state), `gallery.js` (photo grid), `modal.js` (viewer), `sidebar.js` (timeline/locations), `autoplay.js` (slideshow), `i18n.js` (language), and `utils.js`.
 - **DOM Virtualization**: Uses `IntersectionObserver` to intelligently unload off-screen `<img/>` and `<video>` elements, keeping memory usage minimal even when scrolling through tens of thousands of photos.
 - **Infinite Scrolling**: Lazy-loads paginated data for a seamless scrolling experience.
 - **Live Photos**: Opening a live photo dynamically creates a `<video>` overlay.

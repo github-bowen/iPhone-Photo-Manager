@@ -73,7 +73,7 @@
 
 #### 3.5 前端架构 (`frontend/js/`)
 基于原生 ES Modules 的模块化单页面应用。
-- **模块化设计**：拆分为 `main.js` (入口), `api.js` (网络), `state.js` (状态), `gallery.js` (照片墙), `modal.js` (大图), `sidebar.js` (侧边栏), `i18n.js` (多语言), `utils.js` (工具)。
+- **模块化设计**：拆分为 `main.js` (入口), `api.js` (网络), `state.js` (状态), `gallery.js` (照片墙), `modal.js` (大图), `sidebar.js` (侧边栏), `autoplay.js` (幻灯片自动播放), `i18n.js` (多语言), `utils.js` (工具)。
 - **虚拟滚动 (DOM Virtualization)**：利用 `IntersectionObserver` 监控照片卡片，智能卸载滑出屏幕的 `<img>` 和 `<video>` 节点，使得渲染数万张照片时内存占用依然保持极低水平。
 - **无限滚动**：懒加载分页数据以实现无缝滚动体验。
 - **Live Photo 交互**：弹窗中动态创建 `<video>` 标签进行实时预览回放。
