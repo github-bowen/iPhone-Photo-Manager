@@ -106,11 +106,25 @@
   <!-- Photo Detail Modal -->
   <div class="modal-backdrop" id="modal-backdrop">
     <button class="modal-close" id="modal-close" data-i18n-title="close_btn">✕</button>
-    <div id="autoplay-controls" style="display: none; position: absolute; top: 20px; left: 20px; z-index: 60;">
-      <button id="autoplay-stop-btn" class="autoplay-btn-stop">⏹ 停止幻灯片 / Stop</button>
-    </div>
     <div class="modal-content">
       <div class="modal-image-container" id="modal-image-container">
+        <!-- Floating Autoplay Toolbar -->
+        <div id="modal-autoplay-toolbar" style="display: none; position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 60; align-items: center; gap: 16px; background: rgba(30,30,30,0.8); backdrop-filter: blur(10px); padding: 8px 20px; border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);">
+          
+          <button id="modal-autoplay-toggle" style="background: var(--accent-purple); border: none; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; font-size: 14px;">▶</button>
+          
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <label style="color: white; font-size: 12px;">⏱️</label>
+            <input type="range" id="modal-autoplay-duration" value="3" min="1" max="10" step="1" style="width: 60px; accent-color: var(--accent-purple);">
+            <span id="modal-autoplay-dur-val" style="color: white; font-size: 12px; min-width: 20px;">3s</span>
+          </div>
+          
+          <div style="display: flex; align-items: center; gap: 6px; border-left: 1px solid rgba(255,255,255,0.2); padding-left: 16px;">
+            <input type="checkbox" id="modal-autoplay-wait-video" checked style="accent-color: var(--accent-purple); cursor: pointer;">
+            <label for="modal-autoplay-wait-video" style="color: white; font-size: 12px; cursor: pointer; white-space: nowrap;" data-i18n="autoplay_wait_video"> Wait Video </label>
+          </div>
+        </div>
+        
         <button class="modal-nav prev" id="modal-prev" data-i18n-title="prev_btn">‹</button>
         <!-- Image or video will be inserted here dynamically -->
         <button class="modal-nav next" id="modal-next" data-i18n-title="next_btn">›</button>

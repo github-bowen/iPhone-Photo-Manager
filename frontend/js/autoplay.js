@@ -11,7 +11,8 @@ export function initAutoplay() {
   const modal = $('autoplay-config-modal');
   const cancelBtn = $('autoplay-cancel-btn');
   const startBtn = $('autoplay-start-btn');
-  const stopBtn = $('autoplay-stop-btn');
+  const toggleBtn = $('modal-autoplay-toggle');
+  const durationSlider = $('modal-autoplay-duration');
 
   // Move modal to document.body so it's not affected by any ancestor's
   // backdrop-filter / stacking-context that could clip position:fixed children
@@ -36,8 +37,18 @@ export function initAutoplay() {
     startBtn.addEventListener('click', startAutoplay);
   }
 
-  if (stopBtn) {
-    stopBtn.addEventListener('click', stopAutoplay);
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', () => {
+      if (isAutoplaying) stopAutoplay();
+      else startAutoplayFromCurrent();
+    });
+  }
+
+  if (durationSlider) {
+    const durVal = $('modal-autoplay-dur-val');
+    durationSlider.addEventListener('input', () => {
+      if (durVal) durVal.textContent = durationSlider.value + "s";
+    });
   }
 }
 
@@ -275,11 +286,13 @@ function nextSlide() {
 export function stopAutoplay() {
   isAutoplaying = false;
   if (autoplayTimer) clearTimeout(autoplayTimer);
-  $('autoplay-controls').style.display = 'none';
+  const toggleBtn = $('modal-autoplay-toggle');
+  if (toggleBtn) toggleBtn.textContent = '▶';
 }
 
 export function startAutoplayFromCurrent() {
   isAutoplaying = true;
-  $('autoplay-controls').style.display = 'block';
+  const toggleBtn = $('modal-autoplay-toggle');
+  if (toggleBtn) toggleBtn.textContent = '⏸';
   autoplayLoop();
 }
