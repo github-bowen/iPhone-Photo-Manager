@@ -171,7 +171,8 @@ async function startAutoplay() {
   }
   
   isAutoplaying = true;
-  $('autoplay-controls').style.display = 'block';
+  const toggleBtn = $('modal-autoplay-toggle');
+  if (toggleBtn) toggleBtn.textContent = '⏸';
   
   // Load first page
   await loadPhotos(false);
