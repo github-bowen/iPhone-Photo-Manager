@@ -142,16 +142,26 @@ function renderModalInfo(photo) {
   
   modalInfo.replaceChildren();
 
+  const titleContainer = document.createElement("div");
+  titleContainer.style.display = "flex";
+  titleContainer.style.alignItems = "flex-start";
+  titleContainer.style.justifyContent = "space-between";
+  titleContainer.style.marginBottom = "8px";
+
   const title = document.createElement("div");
   title.className = "modal-info-title";
+  title.style.marginBottom = "0"; // Override default margin
+  title.style.wordBreak = "break-all";
   title.textContent = photo.filename || "Untitled";
-  modalInfo.appendChild(title);
+  titleContainer.appendChild(title);
   
-  // Inject the toolbar right under the title
+  // Inject the toolbar right next to the title (top-right corner)
   if (toolbar) {
       toolbar.style.display = "flex";
-      modalInfo.appendChild(toolbar);
+      titleContainer.appendChild(toolbar);
   }
+  
+  modalInfo.appendChild(titleContainer);
 
   if (photo.display_location) {
     const loc = document.createElement("div");

@@ -105,22 +105,22 @@
 
   <!-- Photo Detail Modal -->
   <div class="modal-backdrop" id="modal-backdrop">
-    <!-- Inline Autoplay Toolbar (Injected into modal-info dynamically) -->
-    <div id="modal-autoplay-toolbar" style="display: none; align-items: center; justify-content: space-between; background: var(--bg-tertiary); padding: 12px; border-radius: 12px; border: 1px solid var(--border-subtle); margin-bottom: 16px; margin-top: 8px;">
+    <!-- Inline Autoplay Toolbar (Injected into modal-info top-right dynamically) -->
+    <div id="modal-autoplay-toolbar" style="display: none; align-items: flex-end; flex-direction: column; gap: 6px; flex-shrink: 0; margin-left: 12px;">
       
-      <div style="display: flex; align-items: center; gap: 12px;">
-        <button id="modal-autoplay-toggle" style="background: var(--accent-purple); border: none; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; font-size: 14px; flex-shrink: 0;">▶</button>
-        
-        <div style="display: flex; align-items: center; gap: 6px;">
-          <input type="range" id="modal-autoplay-duration" value="3" min="1" max="10" step="1" style="width: 50px; accent-color: var(--accent-purple);">
-          <span id="modal-autoplay-dur-val" style="color: var(--text-primary); font-size: 13px; font-weight: bold; min-width: 20px;">3s</span>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 4px;" title="Duration">
+           <input type="range" id="modal-autoplay-duration" value="3" min="1" max="10" step="1" style="width: 50px; accent-color: var(--accent-purple);">
+           <span id="modal-autoplay-dur-val" style="color: var(--text-primary); font-size: 11px; font-weight: bold; min-width: 16px; text-align: left;">3s</span>
         </div>
+        <button id="modal-autoplay-toggle" title="Slideshow" style="background: var(--accent-gradient); border: none; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.15);">▶</button>
       </div>
       
-      <div style="display: flex; align-items: center; gap: 6px;">
-        <input type="checkbox" id="modal-autoplay-wait-video" checked style="accent-color: var(--accent-purple); cursor: pointer; width: 14px; height: 14px;">
-        <label for="modal-autoplay-wait-video" style="color: var(--text-secondary); font-size: 12px; cursor: pointer; white-space: nowrap;" data-i18n="autoplay_wait_video"> Wait Video </label>
-      </div>
+      <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+        <input type="checkbox" id="modal-autoplay-wait-video" checked style="accent-color: var(--accent-purple); margin: 0; cursor: pointer; width: 12px; height: 12px;">
+        <span style="color: var(--text-secondary); font-size: 10px; white-space: nowrap;" data-i18n="autoplay_wait_video">Wait Video</span>
+      </label>
+
     </div>
 
     <button class="modal-close" id="modal-close" data-i18n-title="close_btn">✕</button>
