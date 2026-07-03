@@ -270,6 +270,7 @@ export async function loadPhotos(append) {
   if (state.dateFrom) params.set("date_from", state.dateFrom + "T00:00:00");
   if (state.dateTo) params.set("date_to", state.dateTo + "T23:59:59");
   if (state.language) params.set("lang", state.language);
+  if (state.sortOrder) params.set("sort_order", state.sortOrder);
 
   try {
     const data = await api("/api/photos?" + params.toString());

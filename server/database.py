@@ -117,6 +117,7 @@ async def get_photos(
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
     is_screenshot: Optional[bool] = None,
+    sort_order: str = "desc",
 ) -> tuple[list[dict], int]:
     """Get paginated photos with optional filters. Returns (photos, total_count)."""
     conditions = ["file_type != 'AAE'"]
@@ -136,8 +137,11 @@ async def get_photos(
     )
 
     if file_type:
-        conditions.append("file_type = ?")
-        params.append(file_type.upper())
+        types = [t.strip().upper() for t in file_type.split(",") if t.strip()]
+        if types:
+            placeholders = ",".join(["?"] * len(types))
+            conditions.append(f"file_type IN ({placeholders})")
+            params.extend(types)
 
     if location_name:
         conditions.append("location_name = ?")
@@ -174,8 +178,9 @@ async def get_photos(
 
     # Get paginated results
     offset = (page - 1) * per_page
+    order_dir = "ASC" if sort_order.lower() == "asc" else "DESC"
     rows = await db.execute_fetchall(
-        f"SELECT * FROM photos WHERE {where} ORDER BY taken_at DESC, filename ASC LIMIT ? OFFSET ?",
+        f"SELECT * FROM photos WHERE {where} ORDER BY taken_at {order_dir}, filename {order_dir} LIMIT ? OFFSET ?",
         params + [per_page, offset],
     )
 
@@ -191,14 +196,15 @@ async def get_photo_by_id(db: aiosqlite.Connection, photo_id: int) -> Optional[d
     return dict(rows[0]) if rows else None
 
 
-async def get_timeline(db: aiosqlite.Connection) -> list[dict]:
+async def get_timeline(db: aiosqlite.Connection, sort_order: str = "desc") -> list[dict]:
     """Get photo counts grouped by date."""
+    order_dir = "ASC" if sort_order.lower() == "asc" else "DESC"
     rows = await db.execute_fetchall(
-        """SELECT date(taken_at) as date, COUNT(*) as count
+        f"""SELECT date(taken_at) as date, COUNT(*) as count
            FROM photos
            WHERE taken_at IS NOT NULL AND file_type != 'AAE' AND is_edited = 0
            GROUP BY date(taken_at)
-           ORDER BY date DESC"""
+           ORDER BY date {order_dir}"""
     )
     return [dict(row) for row in rows]
 

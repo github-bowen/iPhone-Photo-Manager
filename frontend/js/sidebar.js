@@ -29,7 +29,7 @@ export function resetSidebarTimer() {
 
 export async function loadTimeline() {
   try {
-    const data = await api("/api/timeline");
+    const data = await api(`/api/timeline?sort_order=${state.sortOrder || "desc"}`);
     state.timeline = data;
     renderTimeline();
   } catch (e) {

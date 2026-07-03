@@ -58,6 +58,8 @@ export const i18n = {
     scan_progress: "Scanning files...",
     country_only: "Country / City View",
     actions_sec: "Actions",
+    slideshow: "Slideshow",
+    slideshow_config: "Slideshow Configuration"
     view_original: "View Original File"
   },
   zh: {
@@ -117,6 +119,8 @@ export const i18n = {
     scan_progress: "正在扫描文件...",
     country_only: "按国家/城市层级显示",
     actions_sec: "操作",
+    slideshow: "幻灯片",
+    slideshow_config: "幻灯片播放设置",
     view_original: "查看原图 / 原始文件"
   }
 };

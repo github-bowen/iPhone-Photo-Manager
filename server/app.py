@@ -303,6 +303,7 @@ async def api_get_photos(
     date_to: Optional[str] = Query(None),
     screenshots: Optional[bool] = Query(None),
     lang: Optional[str] = Query(None),
+    sort_order: Optional[str] = Query("desc"),
 ):
     """Get paginated list of photos with optional filters."""
     db = await get_db()
@@ -318,6 +319,7 @@ async def api_get_photos(
             date_from=date_from,
             date_to=date_to,
             is_screenshot=screenshots,
+            sort_order=sort_order,
         )
         target_lang = lang if lang else os.getenv("APP_LANGUAGE", "zh")
         if target_lang == "zh":
@@ -555,11 +557,11 @@ async def api_get_thumbnail(photo_id: int, size: str):
 
 
 @app.get("/api/timeline")
-async def api_get_timeline():
-    """Get photo counts grouped by date."""
+async def api_get_timeline(sort_order: Optional[str] = Query("desc")):
+    """Get photo counts by date."""
     db = await get_db()
     try:
-        return await get_timeline(db)
+        return await get_timeline(db, sort_order)
     finally:
         await db.close()
 

@@ -20,5 +20,6 @@ export const state = {
   theme: "light",
   loadOriginalOnClick: false,
   expandedMonths: new Set(),
-  expandedCountries: new Set()
+  expandedCountries: new Set(),
+  sortOrder: "desc"
 };

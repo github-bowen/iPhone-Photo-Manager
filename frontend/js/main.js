@@ -5,6 +5,7 @@ import { updateStats } from './utils.js';
 import { loadPhotos, resetAndReload, setupInfiniteScroll } from './gallery.js';
 import { loadTimeline, loadLocations, closeMobileSidebar, resetSidebarTimer } from './sidebar.js';
 import { closeModal, renderModalContent } from './modal.js';
+import { initAutoplay } from './autoplay.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -186,6 +187,7 @@ async function init() {
   const langToggle = $("lang-toggle");
   const loadOriginalToggle = $("load-original-toggle");
   const themeToggle = $("theme-toggle");
+  const sortToggle = $("sort-toggle");
 
   try {
     const config = await api("/api/config");
@@ -209,6 +211,14 @@ async function init() {
     if (themeToggle) {
         if (state.theme === "dark") themeToggle.classList.add("active");
         else themeToggle.classList.remove("active");
+    }
+
+    if (localStorage.getItem("app_sort")) {
+        state.sortOrder = localStorage.getItem("app_sort");
+    }
+    if (sortToggle) {
+        if (state.sortOrder === "asc") sortToggle.classList.add("active");
+        else sortToggle.classList.remove("active");
     }
 
     if (config.load_original_on_click !== undefined) {
@@ -256,6 +266,18 @@ async function init() {
       document.body.className = "theme-" + state.theme;
     });
   }
+
+  if (sortToggle) {
+    sortToggle.addEventListener("click", function (e) {
+      this.classList.toggle("active");
+      state.sortOrder = this.classList.contains("active") ? "asc" : "desc";
+      localStorage.setItem("app_sort", state.sortOrder);
+      loadTimeline();
+      resetAndReload();
+    });
+  }
+
+  initAutoplay();
 
   await checkScanStatus();
 
