@@ -1,8 +1,8 @@
-import { state } from './state.js?v=7';
-import { api } from './api.js?v=7';
-import { t } from './i18n.js?v=7';
-import { $, formatDateLabel, formatDuration, createEmptyState } from './utils.js?v=7';
-import { openModal } from './modal.js?v=7';
+import { state } from './state.js?v=10';
+import { api } from './api.js?v=10';
+import { t } from './i18n.js?v=10';
+import { $, formatDateLabel, formatDuration, createEmptyState } from './utils.js?v=10';
+import { openModal } from './modal.js?v=10';
 
 let galleryObserver = null;
 

@@ -1,7 +1,7 @@
-import { state } from './state.js?v=7';
-import { t } from './i18n.js?v=7';
-import { $, formatDate, formatTime, formatFileSize, formatDuration } from './utils.js?v=7';
-import { isAutoplaying, startAutoplayFromCurrent, stopAutoplay } from './autoplay.js?v=7';
+import { state } from './state.js?v=10';
+import { t } from './i18n.js?v=10';
+import { $, formatDate, formatTime, formatFileSize, formatDuration } from './utils.js?v=10';
+import { isAutoplaying, startAutoplayFromCurrent, stopAutoplay } from './autoplay.js?v=10';
 
 export function openModal(index) {
   if (!state.photos || state.photos.length === 0) return;
@@ -81,6 +81,7 @@ export function renderModalContent() {
 
     if (photo.is_live_photo) {
       const liveBadge = document.createElement("div");
+      liveBadge.id = "modal-live-badge";
       liveBadge.textContent = t("play_live");
       liveBadge.style.position = "absolute";
       liveBadge.style.top = "20px";

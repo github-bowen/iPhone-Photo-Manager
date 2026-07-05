@@ -585,16 +585,20 @@ async def api_get_locations(lang: str = None):
             for loc in locations:
                 name = loc.get("location_name")
                 if name:
+                    raw_country = name.split(", ")[-1].strip()
                     loc["display_location"] = trans_map[name]
-                    loc["display_country"] = trans_map[name.split(", ")[-1].strip()]
+                    loc["display_country"] = trans_map[raw_country]
                     loc["display_city"] = trans_map[name.split(", ")[0].strip()]
+                    loc["raw_country"] = raw_country  # Always store the raw (English) country for filtering
         else:
             for loc in locations:
                 name = loc.get("location_name")
                 if name:
+                    raw_country = name.split(", ")[-1].strip()
                     loc["display_location"] = name
-                    loc["display_country"] = name.split(", ")[-1].strip()
+                    loc["display_country"] = raw_country
                     loc["display_city"] = name.split(", ")[0].strip()
+                    loc["raw_country"] = raw_country
         return locations
     finally:
         await db.close()

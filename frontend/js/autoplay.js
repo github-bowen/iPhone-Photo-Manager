@@ -1,8 +1,8 @@
-import { state } from './state.js?v=7';
-import { $ } from './utils.js?v=7';
-import { resetAndReload, loadPhotos } from './gallery.js?v=7';
-import { openModal, closeModal, renderModalContent } from './modal.js?v=7';
-import { t } from './i18n.js?v=9';
+import { state } from './state.js?v=10';
+import { $ } from './utils.js?v=10';
+import { resetAndReload, loadPhotos } from './gallery.js?v=10';
+import { openModal, closeModal, renderModalContent } from './modal.js?v=10';
+import { t } from './i18n.js?v=10';
 
 let autoplayTimer = null;
 export let isAutoplaying = false;
@@ -263,15 +263,9 @@ async function autoplayLoop() {
       
       if (!videoEl && photo.is_live_photo) {
          // trigger live photo play badge
-         const container = $('modal-image-container');
-         if (container) {
-            const divs = container.getElementsByTagName('div');
-             for (let d of divs) {
-                if (d.textContent === t('play_live') || d.textContent === t('playing_live')) {
-                   if (d.textContent === t('play_live')) d.click();
-                   break;
-                }
-             }
+         const badge = $('modal-live-badge');
+         if (badge && badge.textContent === t('play_live')) {
+             badge.click();
          }
          // Give it a moment to inject video
          setTimeout(() => {
