@@ -19,6 +19,7 @@ env/
 # === Data (runtime-generated, user-specific) ===
 data/
 photos.db
+translation_cache.json
 
 # === Photo library (user content, do NOT commit) ===
 photos/

@@ -8,6 +8,7 @@ import asyncio
 import os
 import logging
 import mimetypes
+import json
 from contextlib import asynccontextmanager
 from typing import Optional
 
@@ -30,8 +31,39 @@ from server.scanner import get_all_files_on_disk, scan_specific_files
 from server.thumbnail import generate_thumbnail, get_thumbnail_path, thumbnail_exists
 from server.geocoder import reverse_geocode, batch_reverse_geocode
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_DIR = os.path.dirname(BASE_DIR)
+
 # Translation cache
-_translation_cache = {}
+TRANSLATION_CACHE_FILE = os.path.join(PROJECT_DIR, "data", "translation_cache.json")
+
+def load_translation_cache():
+    if os.path.exists(TRANSLATION_CACHE_FILE):
+        try:
+            with open(TRANSLATION_CACHE_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return {tuple(k.split("|||")): v for k, v in data.items() if "|||" in k}
+        except Exception as e:
+            logger.warning(f"Failed to load translation cache: {e}")
+    return {}
+
+def save_translation_cache():
+    try:
+        os.makedirs(os.path.dirname(TRANSLATION_CACHE_FILE), exist_ok=True)
+        with open(TRANSLATION_CACHE_FILE, "w", encoding="utf-8") as f:
+            data = {f"{k[0]}|||{k[1]}": v for k, v in _translation_cache.items()}
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logger.warning(f"Failed to save translation cache: {e}")
+
+_translation_cache = load_translation_cache()
 _translation_sem = asyncio.Semaphore(10)
 
 async def translate_text(text: str, target_lang: str = 'zh-CN') -> str:
@@ -50,6 +82,7 @@ async def translate_text(text: str, target_lang: str = 'zh-CN') -> str:
                 timeout=10.0
             )
         _translation_cache[cache_key] = translated
+        await asyncio.to_thread(save_translation_cache)
         return translated
     except asyncio.TimeoutError:
         logger.warning(f"Translation timeout for '{text}'")
@@ -57,16 +90,6 @@ async def translate_text(text: str, target_lang: str = 'zh-CN') -> str:
     except Exception as e:
         logger.warning(f"Translation failed for '{text}': {e}")
         return text
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-)
-logger = logging.getLogger(__name__)
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_DIR = os.path.dirname(BASE_DIR)
 
 _photos_env = os.getenv("PHOTOS_DIR", "photos")
 if os.path.isabs(_photos_env):
