@@ -800,8 +800,114 @@ body.theme-dark .toggle-pill-bg {
 .modal-info-title {
   font-size: 1rem;
   font-weight: 600;
-  margin-bottom: var(--space-lg);
+  margin-bottom: 0;
   word-break: break-all;
+}
+
+/* Autoplay Toolbar (below modal info title) */
+.modal-autoplay-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--bg-glass, rgba(255,255,255,0.08));
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md, 8px);
+  padding: 12px;
+  margin-bottom: var(--space-lg);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.mat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mat-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent-purple, #7c3aed);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mat-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mat-duration {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mat-duration label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.mat-duration input[type="range"] {
+  flex: 1;
+  accent-color: var(--accent-purple, #7c3aed);
+  cursor: pointer;
+}
+
+.mat-duration span {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  min-width: 20px;
+  text-align: right;
+}
+
+.mat-play-btn {
+  background: var(--accent-gradient, linear-gradient(135deg, #7c3aed, #a855f7));
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 11px;
+  box-shadow: 0 2px 8px rgba(124,58,237,0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.mat-play-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(124,58,237,0.5);
+}
+
+.mat-wait-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 6px;
+  background: var(--bg-tertiary);
+  border-radius: 6px;
+}
+
+.mat-wait-label input[type="checkbox"] {
+  accent-color: var(--accent-purple, #7c3aed);
+  margin: 0;
+  cursor: pointer;
+  width: 14px;
+  height: 14px;
+}
+
+.mat-wait-label span {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-weight: 500;
 }
 
 .modal-info-section {
@@ -1206,4 +1312,222 @@ body.theme-dark .toggle-pill-bg {
 .autoplay-btn-stop:hover {
   transform: scale(1.05);
   background: rgb(239, 68, 68);
+}
+
+/* Autoplay Select styling */
+.autoplay-select, .mat-select {
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  outline: none;
+  cursor: pointer;
+}
+.autoplay-select {
+  width: 100%;
+  margin-top: 5px;
+}
+.mat-select {
+  flex: 1;
+}
+
+/* Segmented Control for Autoplay Config */
+.autoplay-radio-group {
+  display: flex;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  padding: 4px;
+  gap: 4px;
+}
+
+.autoplay-radio-btn {
+  flex: 1;
+  position: relative;
+  cursor: pointer;
+  text-align: center;
+  padding: 8px 4px;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.autoplay-radio-btn input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.autoplay-radio-btn span {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  position: relative;
+  z-index: 1;
+}
+
+.autoplay-radio-btn input[type="radio"]:checked + span {
+  color: #fff;
+  font-weight: 600;
+}
+
+.autoplay-radio-btn:has(input[type="radio"]:checked) {
+  background: var(--accent-purple, #7c3aed);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* ===================================================================
+   Enhanced Form Controls & Glassmorphism UI
+   =================================================================== */
+
+/* Custom Range Slider */
+input[type="range"] {
+  -webkit-appearance: none;
+  width: 100%;
+  background: transparent;
+}
+input[type="range"]:focus {
+  outline: none;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 6px;
+  cursor: pointer;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+}
+input[type="range"]::-webkit-slider-thumb {
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  background: var(--accent-purple);
+  cursor: pointer;
+  -webkit-appearance: none;
+  margin-top: -6px;
+  box-shadow: 0 0 10px var(--accent-glow);
+  transition: transform var(--transition-fast);
+}
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+/* Glassmorphism Select */
+.mat-select {
+  appearance: none;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  padding: 4px 28px 4px 12px;
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  transition: all var(--transition-fast);
+}
+.mat-select:hover {
+  background-color: var(--bg-glass-hover);
+}
+.mat-select:focus {
+  outline: none;
+  border-color: var(--accent-purple);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+.mat-select option {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+/* Custom Checkbox */
+input[type="checkbox"] {
+  accent-color: var(--accent-purple);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+
+/* ===================================================================
+   Enhanced Detail Modal Navigation & Buttons
+   =================================================================== */
+
+/* Filter Button Glow Micro-Animations */
+.filter-btn {
+  position: relative;
+  overflow: hidden;
+}
+.filter-btn::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  background: var(--accent-glow);
+  transform: translate(-50%, -50%) scale(0);
+  border-radius: 50%;
+  transition: transform 0.4s ease-out;
+  z-index: 0;
+}
+.filter-btn:active::after {
+  transform: translate(-50%, -50%) scale(2);
+  transition: transform 0s;
+}
+
+/* Modal Navigation (Prev / Next SVG Glassmorphism) */
+.modal-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--bg-glass);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  color: var(--text-primary);
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: all var(--transition-fast);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+.modal-nav:hover {
+  background: var(--bg-overlay);
+  color: var(--accent-purple);
+  box-shadow: 0 4px 16px var(--accent-glow);
+  transform: translateY(-50%) scale(1.1);
+}
+.modal-nav:active {
+  transform: translateY(-50%) scale(0.95);
+}
+.modal-nav svg {
+  opacity: 0.8;
+  transition: all var(--transition-fast);
+}
+.modal-nav:hover svg {
+  opacity: 1;
+}
+.modal-nav.prev {
+  left: 20px;
+}
+.modal-nav.next {
+  right: 20px;
+}
+
+/* Improve Info Panel layout */
+.modal-info {
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-xl);
 }

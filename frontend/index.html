@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="iPhone Photo Manager — Browse and search your photo library by time and location">
   <title data-i18n="app_title">iPhone 照片管理</title>
-  <link rel="stylesheet" href="/index.css?v=6">
+  <link rel="stylesheet" href="/index.css?v=11">
 </head>
 <body>
   <div class="app" id="app">
@@ -105,31 +105,43 @@
 
   <!-- Photo Detail Modal -->
   <div class="modal-backdrop" id="modal-backdrop">
-    <!-- Inline Autoplay Toolbar (Injected into modal-info top-right dynamically) -->
-    <div id="modal-autoplay-toolbar" style="display: none; align-items: flex-end; flex-direction: column; gap: 6px; flex-shrink: 0; margin-left: 12px;">
-      
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <div style="display: flex; align-items: center; gap: 4px;" title="Duration">
-           <input type="range" id="modal-autoplay-duration" value="3" min="1" max="10" step="1" style="width: 50px; accent-color: var(--accent-purple);">
-           <span id="modal-autoplay-dur-val" style="color: var(--text-primary); font-size: 11px; font-weight: bold; min-width: 16px; text-align: left;">3s</span>
-        </div>
-        <button id="modal-autoplay-toggle" title="Slideshow" style="background: var(--accent-gradient); border: none; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.15);">▶</button>
+    <div id="modal-autoplay-toolbar" class="modal-autoplay-toolbar" style="display:none;">
+      <div class="mat-header">
+        <span class="mat-title" data-i18n="autoplay_title">▶ 自动播放 / Slideshow</span>
+        <button id="modal-autoplay-toggle" class="mat-play-btn" title="Toggle Slideshow">▶</button>
       </div>
-      
-      <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
-        <input type="checkbox" id="modal-autoplay-wait-video" checked style="accent-color: var(--accent-purple); margin: 0; cursor: pointer; width: 12px; height: 12px;">
-        <span style="color: var(--text-secondary); font-size: 10px; white-space: nowrap;" data-i18n="autoplay_wait_video">Wait Video</span>
-      </label>
-
+      <div class="mat-controls">
+        <div class="mat-duration">
+          <label data-i18n="autoplay_duration_lbl">停留时长:</label>
+          <input type="range" id="modal-autoplay-duration" value="3" min="1" max="10" step="1">
+          <span id="modal-autoplay-dur-val">3s</span>
+        </div>
+        <label class="mat-wait-label">
+          <input type="checkbox" id="modal-autoplay-wait-video" checked>
+          <span data-i18n="autoplay_wait_video">播完视频再切换</span>
+        </label>
+        
+        <div class="mat-duration">
+          <label data-i18n="autoplay_direction">方向:</label>
+          <select id="modal-autoplay-direction" class="mat-select">
+            <option value="forward" data-i18n="autoplay_dir_forward">向后播放 (→)</option>
+            <option value="backward" data-i18n="autoplay_dir_backward">向前播放 (←)</option>
+          </select>
+        </div>
+      </div>
     </div>
 
     <button class="modal-close" id="modal-close" data-i18n-title="close_btn">✕</button>
     <div class="modal-content">
       <div class="modal-image-container" id="modal-image-container">
         
-        <button class="modal-nav prev" id="modal-prev" data-i18n-title="prev_btn">‹</button>
+        <button class="modal-nav prev" id="modal-prev" data-i18n-title="prev_btn">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
         <!-- Image or video will be inserted here dynamically -->
-        <button class="modal-nav next" id="modal-next" data-i18n-title="next_btn">›</button>
+        <button class="modal-nav next" id="modal-next" data-i18n-title="next_btn">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
       </div>
       <div class="modal-info" id="modal-info">
         <!-- Photo details will be inserted here dynamically -->
@@ -143,7 +155,7 @@
       <h3 class="autoplay-modal-title">▶️ <span data-i18n="slideshow_config">幻灯片播放设置</span></h3>
 
       <div class="autoplay-modal-section">
-        <label class="autoplay-modal-label">📅 日期范围</label>
+        <label class="autoplay-modal-label" data-i18n="autoplay_date_range">📅 日期范围</label>
         <div class="autoplay-modal-row">
           <input type="date" id="autoplay-date-from" class="date-input" style="flex: 1;">
           <input type="date" id="autoplay-date-to" class="date-input" style="flex: 1;">
@@ -151,23 +163,23 @@
       </div>
 
       <div class="autoplay-modal-section">
-        <label class="autoplay-modal-label">📍 地点范围 (国家)</label>
+        <label class="autoplay-modal-label" data-i18n="autoplay_location">📍 地点范围 (国家)</label>
         <div id="autoplay-location-container" class="autoplay-checkbox-group">
           <!-- Checkboxes injected by JS -->
         </div>
       </div>
 
       <div class="autoplay-modal-section">
-        <label class="autoplay-modal-label">🖼️ 媒体类型</label>
+        <label class="autoplay-modal-label" data-i18n="autoplay_media_type">🖼️ 媒体类型</label>
         <div class="autoplay-checkbox-group">
-          <label class="autoplay-checkbox-label"><input type="checkbox" id="autoplay-type-photo" checked> 照片</label>
-          <label class="autoplay-checkbox-label"><input type="checkbox" id="autoplay-type-video" checked> 视频</label>
-          <label class="autoplay-checkbox-label"><input type="checkbox" id="autoplay-type-screenshot"> 截图</label>
+          <label class="autoplay-checkbox-label"><input type="checkbox" id="autoplay-type-photo" checked> <span data-i18n="autoplay_photo">照片</span></label>
+          <label class="autoplay-checkbox-label"><input type="checkbox" id="autoplay-type-video" checked> <span data-i18n="autoplay_video">视频</span></label>
+          <label class="autoplay-checkbox-label"><input type="checkbox" id="autoplay-type-screenshot"> <span data-i18n="autoplay_screenshot">截图</span></label>
         </div>
       </div>
 
       <div class="autoplay-modal-section">
-        <label class="autoplay-modal-label">⏱️ 每张停留时长</label>
+        <label class="autoplay-modal-label" data-i18n="autoplay_duration_title">⏱️ 每张停留时长</label>
         <div class="autoplay-range-row">
           <input type="range" id="autoplay-duration" value="3" min="1" max="10" step="1" style="flex: 1; accent-color: var(--accent-purple);">
           <span id="autoplay-duration-display" style="min-width: 32px; text-align: center; color: var(--text-primary); font-weight: bold; font-size: 14px;">3s</span>
@@ -175,15 +187,29 @@
       </div>
 
       <div class="autoplay-modal-section">
+        <label class="autoplay-modal-label" data-i18n="autoplay_sort_order">🔄 播放顺序</label>
+        <div class="autoplay-radio-group">
+          <label class="autoplay-radio-btn">
+            <input type="radio" name="autoplay-sort" id="autoplay-sort-desc" value="desc" checked>
+            <span data-i18n="autoplay_sort_desc">从晚到早 (最新)</span>
+          </label>
+          <label class="autoplay-radio-btn">
+            <input type="radio" name="autoplay-sort" id="autoplay-sort-asc" value="asc">
+            <span data-i18n="autoplay_sort_asc">从早到晚 (最旧)</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="autoplay-modal-section">
         <label class="autoplay-checkbox-label" style="padding: 12px; background: var(--bg-tertiary); border: 1px solid var(--border-subtle); border-radius: 12px; font-weight: 600;">
           <input type="checkbox" id="autoplay-wait-video" checked>
-          播放完整视频 / Live 图后再切换
+          <span data-i18n="autoplay_wait_video_long">播放完整视频 / Live 图后再切换</span>
         </label>
       </div>
 
       <div class="autoplay-actions">
-        <button id="autoplay-cancel-btn" class="autoplay-btn-cancel">取消</button>
-        <button id="autoplay-start-btn" class="autoplay-btn-start">▶ 开始播放</button>
+        <button id="autoplay-cancel-btn" class="autoplay-btn-cancel" data-i18n="autoplay_cancel">取消</button>
+        <button id="autoplay-start-btn" class="autoplay-btn-start" data-i18n="autoplay_start">▶ 开始播放</button>
       </div>
     </div>
   </div>
@@ -197,6 +223,6 @@
     </div>
   </div>
 
-  <script type="module" src="/js/main.js?v=2"></script>
+  <script type="module" src="/js/main.js?v=9"></script>
 </body>
 </html>

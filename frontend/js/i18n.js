@@ -1,4 +1,4 @@
-import { state } from './state.js';
+import { state } from './state.js?v=7';
 
 export const i18n = {
   en: {
@@ -60,7 +60,28 @@ export const i18n = {
     actions_sec: "Actions",
     slideshow: "Slideshow",
     slideshow_config: "Slideshow Configuration",
-    view_original: "View Original File"
+    view_original: "View Original File",
+    autoplay_title: "▶ Slideshow",
+    autoplay_duration_lbl: "Duration:",
+    autoplay_wait_video: "Wait for video",
+    autoplay_wait_video_long: "Wait for complete video / live photo playback",
+    autoplay_direction: "Direction:",
+    autoplay_dir_forward: "Forward (→)",
+    autoplay_dir_backward: "Backward (←)",
+    autoplay_date_range: "📅 Date Range",
+    autoplay_location: "📍 Location (Country)",
+    autoplay_media_type: "🖼️ Media Type",
+    autoplay_photo: "Photo",
+    autoplay_video: "Video",
+    autoplay_screenshot: "Screenshot",
+    autoplay_duration_title: "⏱️ Duration per photo",
+    autoplay_sort_order: "🔄 Sort Order",
+    autoplay_sort_desc: "Newest First",
+    autoplay_sort_asc: "Oldest First",
+    autoplay_cancel: "Cancel",
+    autoplay_start: "▶ Start Slideshow",
+    play_live: "▶ Play",
+    playing_live: "PLAYING..."
   },
   zh: {
     app_title: "iPhone 照片管理",
@@ -121,7 +142,28 @@ export const i18n = {
     actions_sec: "操作",
     slideshow: "幻灯片",
     slideshow_config: "幻灯片播放设置",
-    view_original: "查看原图 / 原始文件"
+    view_original: "查看原始文件",
+    autoplay_title: "▶ 自动播放 / Slideshow",
+    autoplay_duration_lbl: "停留时长:",
+    autoplay_wait_video: "播完视频再切换",
+    autoplay_wait_video_long: "播放完整视频 / Live 图后再切换",
+    autoplay_direction: "方向:",
+    autoplay_dir_forward: "向后播放 (→)",
+    autoplay_dir_backward: "向前播放 (←)",
+    autoplay_date_range: "📅 日期范围",
+    autoplay_location: "📍 地点范围 (国家)",
+    autoplay_media_type: "🖼️ 媒体类型",
+    autoplay_photo: "照片",
+    autoplay_video: "视频",
+    autoplay_screenshot: "截图",
+    autoplay_duration_title: "⏱️ 每张停留时长",
+    autoplay_sort_order: "🔄 播放顺序",
+    autoplay_sort_desc: "从晚到早 (最新)",
+    autoplay_sort_asc: "从早到晚 (最旧)",
+    autoplay_cancel: "取消",
+    autoplay_start: "▶ 开始播放",
+    play_live: "▶ 播放",
+    playing_live: "播放中..."
   }
 };
 

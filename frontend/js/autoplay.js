@@ -1,7 +1,8 @@
-import { state } from './state.js';
-import { $ } from './utils.js';
-import { resetAndReload, loadPhotos } from './gallery.js';
-import { openModal, closeModal, renderModalContent } from './modal.js';
+import { state } from './state.js?v=7';
+import { $ } from './utils.js?v=7';
+import { resetAndReload, loadPhotos } from './gallery.js?v=7';
+import { openModal, closeModal, renderModalContent } from './modal.js?v=7';
+import { t } from './i18n.js?v=9';
 
 let autoplayTimer = null;
 export let isAutoplaying = false;
@@ -50,6 +51,9 @@ export function initAutoplay() {
       if (durVal) durVal.textContent = durationSlider.value + "s";
     });
   }
+
+  // Remove the old 'change' event listener that resets the slideshow.
+  // The user just wants to change the playback direction on the fly without reloading.
 }
 
 function openAutoplayConfig() {
@@ -70,21 +74,22 @@ function openAutoplayConfig() {
   if (locContainer) {
     locContainer.innerHTML = '';
     
-    // Aggregate locations by country
-    const countries = {};
+    // Aggregate locations by country using raw_country (English) as key for filtering
+    // but display the translated display_country to the user
+    const countries = {}; // key: raw_country, value: { displayName, count }
     for (const loc of state.locations) {
-      const parts = loc.display_location ? loc.display_location.split(', ') : [];
-      const country = loc.display_country || (parts.length > 0 ? parts[parts.length - 1] : "Unknown");
-      if (!countries[country]) countries[country] = 0;
-      countries[country] += loc.count;
+      const rawCountry = loc.raw_country || loc.display_country || "Unknown";
+      const displayCountry = loc.display_country || rawCountry;
+      if (!countries[rawCountry]) countries[rawCountry] = { displayName: displayCountry, count: 0 };
+      countries[rawCountry].count += loc.count;
     }
     
     // Convert to array and sort by count descending
     const countryArray = Object.entries(countries)
-      .map(([name, count]) => ({name, count}))
-      .sort((a,b) => b.count - a.count);
+      .map(([rawName, info]) => ({ rawName, displayName: info.displayName, count: info.count }))
+      .sort((a, b) => b.count - a.count);
     
-    // Check which countries are currently active
+    // Check which countries are currently active (activeCountry stores raw English names)
     const activeCountries = state.activeCountry ? state.activeCountry.split(',') : [];
     
     for (const c of countryArray) {
@@ -93,14 +98,12 @@ function openAutoplayConfig() {
       const cb = document.createElement('input');
       cb.type = 'checkbox';
       cb.className = 'autoplay-country-cb';
-      cb.value = c.name;
-      // If we had active filters, check them; otherwise don't check any (or check all by default?)
-      // Let's leave them unchecked by default, or checked if they match activeCountry
-      if (activeCountries.includes(c.name)) {
+      cb.value = c.rawName; // Use raw English name as value so API filter matches DB
+      if (activeCountries.includes(c.rawName)) {
         cb.checked = true;
       }
       label.appendChild(cb);
-      label.appendChild(document.createTextNode(` ${c.name} (${c.count})`));
+      label.appendChild(document.createTextNode(` ${c.displayName} (${c.count})`));
       locContainer.appendChild(label);
     }
   }
@@ -110,6 +113,15 @@ function openAutoplayConfig() {
   $('autoplay-type-photo').checked = isAll || state.activeFilter.includes("HEIC");
   $('autoplay-type-video').checked = isAll || state.activeFilter.includes("MOV");
   $('autoplay-type-screenshot').checked = isAll || state.activeFilter.includes("PNG") || state.activeFilter === "PNG";
+
+  // Pre-fill sort order
+  const sortOrderDesc = $('autoplay-sort-desc');
+  const sortOrderAsc = $('autoplay-sort-asc');
+  if (state.sortOrder === "asc" && sortOrderAsc) {
+    sortOrderAsc.checked = true;
+  } else if (sortOrderDesc) {
+    sortOrderDesc.checked = true;
+  }
 
   // Hook up duration slider display
   const durSlider = $('autoplay-duration');
@@ -139,6 +151,14 @@ async function startAutoplay() {
   const wantsPhoto = $('autoplay-type-photo').checked;
   const wantsVideo = $('autoplay-type-video').checked;
   const wantsScreenshot = $('autoplay-type-screenshot').checked;
+  
+  const sortOrderDesc = $('autoplay-sort-desc');
+  const sortOrderAsc = $('autoplay-sort-asc');
+  if (sortOrderDesc && sortOrderDesc.checked) {
+    state.sortOrder = "desc";
+  } else if (sortOrderAsc && sortOrderAsc.checked) {
+    state.sortOrder = "asc";
+  }
   
   let types = [];
   if (wantsPhoto) types.push("HEIC", "JPG");
@@ -182,24 +202,36 @@ async function startAutoplay() {
     autoplayLoop();
   } else {
     stopAutoplay();
-    alert("No photos found for the selected criteria.");
+    alert(`No photos found for the selected criteria. (Country: ${state.activeCountry || "None"})`);
   }
 }
 
 async function autoplayLoop() {
+  if (autoplayTimer) clearTimeout(autoplayTimer);
   if (!isAutoplaying) return;
   if (state.modalPhotoIndex === -1) {
     stopAutoplay();
     return;
   }
   
-  if (state.modalPhotoIndex >= state.photos.length - 1) {
-    // Reached the end of current page
-    if (state.currentPage < state.totalPages) {
-      state.currentPage++;
-      await loadPhotos(true);
-    } else {
-      // Reached the end of all photos
+  const dirEl = $('modal-autoplay-direction');
+  const direction = dirEl ? dirEl.value : "forward";
+  
+  if (direction === "forward") {
+    if (state.modalPhotoIndex >= state.photos.length - 1) {
+      // Reached the end of current page
+      if (state.currentPage < state.totalPages) {
+        state.currentPage++;
+        await loadPhotos(true);
+      } else {
+        // Reached the end of all photos
+        stopAutoplay();
+        return;
+      }
+    }
+  } else {
+    // If we are at index 0 and going backwards, stop.
+    if (state.modalPhotoIndex <= 0) {
       stopAutoplay();
       return;
     }
@@ -234,12 +266,12 @@ async function autoplayLoop() {
          const container = $('modal-image-container');
          if (container) {
             const divs = container.getElementsByTagName('div');
-            for (let d of divs) {
-               if (d.textContent === '▶ 播放' || d.textContent === 'PLAYING...') {
-                  if (d.textContent === '▶ 播放') d.click();
-                  break;
-               }
-            }
+             for (let d of divs) {
+                if (d.textContent === t('play_live') || d.textContent === t('playing_live')) {
+                   if (d.textContent === t('play_live')) d.click();
+                   break;
+                }
+             }
          }
          // Give it a moment to inject video
          setTimeout(() => {
@@ -258,14 +290,17 @@ async function autoplayLoop() {
 }
 
 function waitForVideo(videoEl, fallbackMs) {
+    if (autoplayTimer) clearTimeout(autoplayTimer);
     if (videoEl) {
         // Ensure it is playing
         if (videoEl.paused) videoEl.play().catch(e => {});
         videoEl.onended = () => {
-            if (isAutoplaying) setTimeout(nextSlide, 500); // 500ms pause after video
+            if (autoplayTimer) clearTimeout(autoplayTimer);
+            if (isAutoplaying) autoplayTimer = setTimeout(nextSlide, 500); // 500ms pause after video
         };
         videoEl.onerror = () => {
-            if (isAutoplaying) setTimeout(nextSlide, fallbackMs);
+            if (autoplayTimer) clearTimeout(autoplayTimer);
+            if (isAutoplaying) autoplayTimer = setTimeout(nextSlide, fallbackMs);
         }
     } else {
         autoplayTimer = setTimeout(nextSlide, fallbackMs);
@@ -274,13 +309,27 @@ function waitForVideo(videoEl, fallbackMs) {
 
 function nextSlide() {
   if (!isAutoplaying) return;
-  if (state.modalPhotoIndex < state.photos.length - 1) {
-    state.modalPhotoIndex++;
-    renderModalContent();
-    autoplayLoop();
+  
+  const dirEl = $('modal-autoplay-direction');
+  const direction = dirEl ? dirEl.value : "forward";
+  
+  if (direction === "forward") {
+    if (state.modalPhotoIndex < state.photos.length - 1) {
+      state.modalPhotoIndex++;
+      renderModalContent();
+      autoplayLoop();
+    } else {
+      // Need to load more, let loop handle it
+      autoplayLoop();
+    }
   } else {
-    // Need to load more, let loop handle it
-    autoplayLoop();
+    if (state.modalPhotoIndex > 0) {
+      state.modalPhotoIndex--;
+      renderModalContent();
+      autoplayLoop();
+    } else {
+      stopAutoplay();
+    }
   }
 }
 

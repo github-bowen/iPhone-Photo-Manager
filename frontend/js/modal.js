@@ -1,7 +1,7 @@
-import { state } from './state.js';
-import { t } from './i18n.js';
-import { $, formatDate, formatTime, formatFileSize, formatDuration } from './utils.js';
-import { isAutoplaying, startAutoplayFromCurrent, stopAutoplay } from './autoplay.js';
+import { state } from './state.js?v=7';
+import { t } from './i18n.js?v=7';
+import { $, formatDate, formatTime, formatFileSize, formatDuration } from './utils.js?v=7';
+import { isAutoplaying, startAutoplayFromCurrent, stopAutoplay } from './autoplay.js?v=7';
 
 export function openModal(index) {
   if (!state.photos || state.photos.length === 0) return;
@@ -28,6 +28,12 @@ export function closeModal() {
     if (el.tagName === "VIDEO") el.pause();
     if (el.classList.contains("modal-media")) el.remove();
   });
+
+  // Rescue toolbar before clearing info
+  const toolbar = document.getElementById("modal-autoplay-toolbar");
+  if (toolbar) {
+      document.body.appendChild(toolbar);
+  }
 
   modalInfo.replaceChildren();
 }
@@ -75,7 +81,7 @@ export function renderModalContent() {
 
     if (photo.is_live_photo) {
       const liveBadge = document.createElement("div");
-      liveBadge.textContent = "▶ 播放";
+      liveBadge.textContent = t("play_live");
       liveBadge.style.position = "absolute";
       liveBadge.style.top = "20px";
       liveBadge.style.left = "20px";
@@ -92,7 +98,7 @@ export function renderModalContent() {
       const playLive = () => {
           if (isPlaying) return;
           isPlaying = true;
-          liveBadge.textContent = "PLAYING...";
+          liveBadge.textContent = t("playing_live");
           liveBadge.style.background = "rgba(255,255,255,1)";
           
           const video = document.createElement("video");
@@ -106,10 +112,13 @@ export function renderModalContent() {
           video.src = "/api/photos/" + photo.id + "/live-video";
           
           video.onended = () => {
+              liveBadge.textContent = t("play_live");
+              isPlaying = false;
               video.remove();
               img.style.visibility = "visible";
-              liveBadge.textContent = "▶ 播放";
-              liveBadge.style.background = "rgba(255,255,255,0.8)";
+          };
+          video.onerror = () => {
+              liveBadge.textContent = t("error_lbl");
               isPlaying = false;
           };
           
@@ -146,22 +155,24 @@ function renderModalInfo(photo) {
   titleContainer.style.display = "flex";
   titleContainer.style.alignItems = "flex-start";
   titleContainer.style.justifyContent = "space-between";
-  titleContainer.style.marginBottom = "8px";
+  titleContainer.style.marginBottom = "var(--space-lg)";
 
   const title = document.createElement("div");
   title.className = "modal-info-title";
-  title.style.marginBottom = "0"; // Override default margin
   title.style.wordBreak = "break-all";
   title.textContent = photo.filename || "Untitled";
   titleContainer.appendChild(title);
-  
-  // Inject the toolbar right next to the title (top-right corner)
+  modalInfo.appendChild(titleContainer);
+
   if (toolbar) {
       toolbar.style.display = "flex";
-      titleContainer.appendChild(toolbar);
+      modalInfo.appendChild(toolbar);
+      
+      const modalSortOrder = document.getElementById("modal-autoplay-sort-order");
+      if (modalSortOrder && state.sortOrder) {
+          modalSortOrder.value = state.sortOrder;
+      }
   }
-  
-  modalInfo.appendChild(titleContainer);
 
   if (photo.display_location) {
     const loc = document.createElement("div");

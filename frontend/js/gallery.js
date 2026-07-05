@@ -1,8 +1,8 @@
-import { state } from './state.js';
-import { api } from './api.js';
-import { t } from './i18n.js';
-import { $, formatDateLabel, formatDuration, createEmptyState } from './utils.js';
-import { openModal } from './modal.js';
+import { state } from './state.js?v=7';
+import { api } from './api.js?v=7';
+import { t } from './i18n.js?v=7';
+import { $, formatDateLabel, formatDuration, createEmptyState } from './utils.js?v=7';
+import { openModal } from './modal.js?v=7';
 
 let galleryObserver = null;
 
@@ -41,7 +41,7 @@ function initVirtualization() {
 function renderCardContent(card, photo) {
   const img = document.createElement("img");
   img.className = "loading";
-  img.alt = photo.filename || "照片";
+  img.alt = photo.filename || t("photo_alt");
   img.src = "/api/photos/" + photo.id + "/thumbnail/small?v=" + Date.now();
   img.onload = () => img.className = "loaded";
   img.onerror = () => {
