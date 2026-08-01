@@ -9,6 +9,7 @@ import struct
 import datetime
 import logging
 import re
+import xml.etree.ElementTree as ET
 from typing import Optional
 from PIL import Image
 from PIL.ExifTags import TAGS, GPSTAGS
@@ -16,10 +17,16 @@ from PIL.ExifTags import TAGS, GPSTAGS
 # Register HEIC support with Pillow
 import pillow_heif
 pillow_heif.register_heif_opener()
+if hasattr(pillow_heif, "register_avif_opener"):
+    pillow_heif.register_avif_opener()
 
 logger = logging.getLogger(__name__)
 
-SUPPORTED_EXTENSIONS = {".heic", ".jpg", ".jpeg", ".png", ".mov", ".aae"}
+SCAN_VERSION = 2
+IMAGE_EXTENSIONS = {".heic", ".heif", ".jpg", ".jpeg", ".png", ".webp", ".avif"}
+VIDEO_EXTENSIONS = {".mov", ".mp4", ".3gp"}
+SIDECAR_EXTENSIONS = {".aae"}
+SUPPORTED_EXTENSIONS = IMAGE_EXTENSIONS | VIDEO_EXTENSIONS | SIDECAR_EXTENSIONS
 
 
 def _determine_taken_at(filepath: str, exif_date: Optional[str] = None) -> str:
@@ -119,7 +126,7 @@ def get_all_files_on_disk(photos_dir: str) -> set[str]:
     for root, _, files in os.walk(photos_dir):
         for fname in sorted(files):
             ext = os.path.splitext(fname)[1].upper()
-            if ext in {".HEIC", ".JPG", ".JPEG", ".PNG", ".MOV", ".AAE"}:
+            if ext.lower() in SUPPORTED_EXTENSIONS:
                 filepath = os.path.join(root, fname)
                 if os.path.isfile(filepath):
                     rel_path = os.path.relpath(filepath, photos_dir)
@@ -148,6 +155,7 @@ def scan_specific_files(photos_dir: str, target_paths: set[str]) -> list[dict]:
             
         # Get full list of files in this directory to handle pairings (e.g. .MOV exists)
         files_in_dir = set(os.listdir(subdir_path))
+        files_by_lower = {name.lower(): name for name in files_in_dir}
         
         for fname in new_fnames:
             filepath = os.path.join(subdir_path, fname)
@@ -164,6 +172,16 @@ def scan_specific_files(photos_dir: str, target_paths: set[str]) -> list[dict]:
                 "directory": subdir_name,
                 "file_type": file_type,
                 "file_size": stat.st_size,
+                "scan_version": SCAN_VERSION,
+                "is_live_photo": 0,
+                "live_photo_mov": None,
+                "is_motion_photo": 0,
+                "motion_photo_offset": None,
+                "motion_photo_length": None,
+                "motion_photo_mime": None,
+                "is_screenshot": 0,
+                "is_edited": 0,
+                "original_file": None,
             }
             
             # Detect edited versions (IMG_E*)
@@ -175,23 +193,35 @@ def scan_specific_files(photos_dir: str, target_paths: set[str]) -> list[dict]:
 
             # Detect Live Photo pairs
             stem = os.path.splitext(fname)[0]
-            if file_type == "HEIC" and f"{stem}.MOV" in files_in_dir:
+            mov_name = files_by_lower.get(f"{stem}.mov".lower())
+            if file_type in ("HEIC", "HEIF") and mov_name:
                 photo_data["is_live_photo"] = 1
-                photo_data["live_photo_mov"] = os.path.join(subdir_name, f"{stem}.MOV")
+                photo_data["live_photo_mov"] = os.path.join(subdir_name, mov_name)
 
             # Extract metadata
-            if file_type in ("HEIC", "JPG", "PNG"):
+            if file_type in ("HEIC", "HEIF", "JPG", "PNG", "WEBP", "AVIF"):
                 meta = extract_image_metadata(filepath, file_type)
                 photo_data.update(meta)
-            elif file_type == "MOV":
-                meta = extract_mov_metadata(filepath)
+                motion_meta = extract_motion_photo_metadata(filepath)
+                if motion_meta:
+                    photo_data.update(motion_meta)
+            elif file_type in ("MOV", "MP4", "3GP"):
+                meta = extract_video_metadata(filepath)
                 photo_data.update(meta)
             elif file_type == "AAE":
                 meta = extract_aae_metadata(filepath)
                 photo_data.update(meta)
 
             # Detect screenshots
-            if file_type == "PNG" and photo_data.get("width") and photo_data.get("height"):
+            path_parts = {part.lower() for part in subdir_name.split(os.sep)}
+            name_lower = fname.lower()
+            if (
+                "screenshots" in path_parts
+                or "screenshot" in name_lower
+                or name_lower.startswith(("screencap", "screen_shot", "screen-shot"))
+            ):
+                photo_data["is_screenshot"] = 1
+            elif file_type == "PNG" and photo_data.get("width") and photo_data.get("height"):
                 w, h = photo_data["width"], photo_data["height"]
                 # Common iPhone screenshot sizes
                 if (w, h) in ((1179, 2556), (2556, 1179), (1170, 2532), (2532, 1170),
@@ -215,7 +245,7 @@ def extract_image_metadata(filepath: str, file_type: str) -> dict:
         exif = img.getexif()
         if not exif:
             # For HEIC, try raw binary parsing as fallback
-            if file_type == "HEIC":
+            if file_type in ("HEIC", "HEIF"):
                 raw_meta = _parse_heic_exif_raw(filepath)
                 meta.update(raw_meta)
         else:
@@ -270,13 +300,164 @@ def extract_image_metadata(filepath: str, file_type: str) -> dict:
     except Exception as e:
         logger.debug("Failed to extract metadata from %s: %s", filepath, e)
         # Try raw parsing for HEIC files
-        if file_type == "HEIC":
+        if file_type in ("HEIC", "HEIF"):
             raw_meta = _parse_heic_exif_raw(filepath)
             meta.update(raw_meta)
 
     meta["taken_at"] = _determine_taken_at(filepath, meta.get("taken_at"))
 
     return meta
+
+
+def _xml_local_name(name: str) -> str:
+    """Return the local portion of an XML namespace-qualified name."""
+    return name.rsplit("}", 1)[-1].rsplit(":", 1)[-1]
+
+
+def _motion_xmp_values(data: bytes) -> tuple[Optional[bool], Optional[int], Optional[int], Optional[str]]:
+    """Read modern and legacy Motion Photo fields from XMP packets."""
+    motion_flag = None
+    video_length = None
+    legacy_offset = None
+    video_mime = None
+
+    packets = re.findall(
+        rb"<(?:[A-Za-z_][\w.-]*:)?xmpmeta\b.*?</(?:[A-Za-z_][\w.-]*:)?xmpmeta>",
+        data,
+        flags=re.DOTALL,
+    )
+    for packet in packets:
+        try:
+            root = ET.fromstring(packet)
+        except ET.ParseError:
+            continue
+
+        for element in root.iter():
+            attrs = {_xml_local_name(key): value for key, value in element.attrib.items()}
+            if "MotionPhoto" in attrs:
+                try:
+                    motion_flag = int(attrs["MotionPhoto"]) == 1
+                except ValueError:
+                    motion_flag = False
+            if "MicroVideo" in attrs and motion_flag is None:
+                try:
+                    motion_flag = int(attrs["MicroVideo"]) == 1
+                except ValueError:
+                    pass
+            if "MicroVideoOffset" in attrs:
+                try:
+                    legacy_offset = int(attrs["MicroVideoOffset"])
+                except ValueError:
+                    pass
+            if attrs.get("Semantic", "").lower() == "motionphoto":
+                try:
+                    video_length = int(attrs.get("Length", ""))
+                except ValueError:
+                    pass
+                video_mime = attrs.get("Mime") or video_mime
+
+    # Some vendor XMP uses malformed/unbound prefixes. Keep a narrow fallback
+    # over individual XML tags so those files remain importable.
+    text = data.decode("latin-1", errors="ignore")
+    flag_match = re.search(r"(?:G?Camera:)?MotionPhoto\s*=\s*['\"](-?\d+)['\"]", text)
+    if flag_match:
+        motion_flag = int(flag_match.group(1)) == 1
+    elif motion_flag is None:
+        micro_match = re.search(r"(?:G?Camera:)?MicroVideo\s*=\s*['\"](\d+)['\"]", text)
+        if micro_match:
+            motion_flag = int(micro_match.group(1)) == 1
+
+    offset_match = re.search(r"(?:G?Camera:)?MicroVideoOffset\s*=\s*['\"](\d+)['\"]", text)
+    if offset_match:
+        legacy_offset = int(offset_match.group(1))
+
+    for tag in re.findall(r"<[^>]+>", text):
+        if re.search(r"(?:Item:)?Semantic\s*=\s*['\"]MotionPhoto['\"]", tag, re.IGNORECASE):
+            length_match = re.search(r"(?:Item:)?Length\s*=\s*['\"](\d+)['\"]", tag)
+            mime_match = re.search(r"(?:Item:)?Mime\s*=\s*['\"]([^'\"]+)['\"]", tag)
+            if length_match:
+                video_length = int(length_match.group(1))
+            if mime_match:
+                video_mime = mime_match.group(1)
+            break
+
+    return motion_flag, video_length, legacy_offset, video_mime
+
+
+def _is_iso_video_at(filepath: str, offset: int, length: int) -> bool:
+    """Validate that a proposed embedded range starts with an ISO video box."""
+    if offset < 0 or length < 12:
+        return False
+    try:
+        with open(filepath, "rb") as file:
+            file.seek(offset)
+            header = file.read(16)
+        return len(header) >= 8 and header[4:8] in (b"ftyp", b"moov", b"mdat")
+    except OSError:
+        return False
+
+
+def _find_embedded_video_after_marker(filepath: str, file_size: int) -> Optional[tuple[int, int]]:
+    """Locate legacy Samsung MotionPhoto_Data payloads near the end of a JPEG."""
+    tail_size = min(file_size, 64 * 1024 * 1024)
+    try:
+        with open(filepath, "rb") as file:
+            file.seek(file_size - tail_size)
+            tail = file.read(tail_size)
+    except OSError:
+        return None
+
+    marker_pos = tail.rfind(b"MotionPhoto_Data")
+    search_start = marker_pos + len(b"MotionPhoto_Data") if marker_pos >= 0 else 0
+    ftyp_pos = tail.find(b"ftyp", search_start)
+    if ftyp_pos < 4 or (marker_pos < 0 and b"MotionPhoto" not in tail[:ftyp_pos]):
+        return None
+
+    offset = file_size - tail_size + ftyp_pos - 4
+    length = file_size - offset
+    return (offset, length) if _is_iso_video_at(filepath, offset, length) else None
+
+
+def extract_motion_photo_metadata(filepath: str) -> dict:
+    """Locate an Android Motion Photo video without modifying the source file."""
+    try:
+        file_size = os.path.getsize(filepath)
+        with open(filepath, "rb") as file:
+            head = file.read(min(file_size, 8 * 1024 * 1024))
+    except OSError:
+        return {}
+
+    motion_flag, video_length, legacy_offset, video_mime = _motion_xmp_values(head)
+    if motion_flag is False:
+        return {}
+
+    candidates = []
+    if video_length:
+        candidates.append((file_size - video_length, video_length))
+    if legacy_offset and legacy_offset != video_length:
+        candidates.append((file_size - legacy_offset, legacy_offset))
+
+    for offset, length in candidates:
+        if length <= file_size and _is_iso_video_at(filepath, offset, length):
+            return {
+                "is_motion_photo": 1,
+                "motion_photo_offset": offset,
+                "motion_photo_length": length,
+                "motion_photo_mime": video_mime if video_mime in ("video/mp4", "video/quicktime") else "video/mp4",
+            }
+
+    if motion_flag or b"MotionPhoto_Data" in head:
+        marker_result = _find_embedded_video_after_marker(filepath, file_size)
+        if marker_result:
+            offset, length = marker_result
+            return {
+                "is_motion_photo": 1,
+                "motion_photo_offset": offset,
+                "motion_photo_length": length,
+                "motion_photo_mime": video_mime if video_mime in ("video/mp4", "video/quicktime") else "video/mp4",
+            }
+
+    return {}
 
 
 def _parse_heic_exif_raw(filepath: str) -> dict:
@@ -456,22 +637,22 @@ def _parse_gps_from_raw(
     return None
 
 
-def extract_mov_metadata(filepath: str) -> dict:
-    """Extract creation time and duration from a MOV file."""
+def extract_video_metadata(filepath: str) -> dict:
+    """Extract creation time, GPS, duration and dimensions from ISO video files."""
     meta = {}
     try:
         file_size = os.path.getsize(filepath)
-        tail_bytes = min(200000, file_size)
+        tail_bytes = min(1024 * 1024, file_size)
 
         with open(filepath, "rb") as f:
             # Read first and last parts of the file to find ISO 6709 GPS
-            data = f.read(min(file_size, 5 * 1024 * 1024))
+            head_data = f.read(min(file_size, 5 * 1024 * 1024))
             import re
-            match = re.search(rb'([+-]\d{2,4}\.\d{2,6})([+-]\d{2,4}\.\d{2,6})', data)
+            match = re.search(rb'([+-]\d{2,4}\.\d{2,6})([+-]\d{2,4}\.\d{2,6})', head_data)
             if not match and file_size > 5 * 1024 * 1024:
                 f.seek(max(0, file_size - 1 * 1024 * 1024))
-                data += f.read()
-                match = re.search(rb'([+-]\d{2,4}\.\d{2,6})([+-]\d{2,4}\.\d{2,6})', data)
+                gps_data = head_data + f.read()
+                match = re.search(rb'([+-]\d{2,4}\.\d{2,6})([+-]\d{2,4}\.\d{2,6})', gps_data)
             
             if match:
                 meta["latitude"] = float(match.group(1))
@@ -479,45 +660,70 @@ def extract_mov_metadata(filepath: str) -> dict:
 
             # Keep reading for duration in moov atom
             f.seek(max(0, file_size - tail_bytes))
-            data = f.read()
+            tail_data = f.read()
+
+        data = head_data if file_size <= len(head_data) else head_data + tail_data
 
         moov_idx = data.find(b"moov")
-        if moov_idx < 4:
-            return meta
+        if moov_idx >= 4:
+            moov_data = data[moov_idx - 4 :]
 
-        moov_data = data[moov_idx - 4 :]
+            # Find mvhd atom
+            mvhd_idx = moov_data.find(b"mvhd")
+            if mvhd_idx >= 4:
+                version = moov_data[mvhd_idx + 4]
+                if version == 0 and mvhd_idx + 24 <= len(moov_data):
+                    creation = struct.unpack(">I", moov_data[mvhd_idx + 8 : mvhd_idx + 12])[0]
+                    timescale = struct.unpack(">I", moov_data[mvhd_idx + 16 : mvhd_idx + 20])[0]
+                    duration = struct.unpack(">I", moov_data[mvhd_idx + 20 : mvhd_idx + 24])[0]
 
-        # Find mvhd atom
-        mvhd_idx = moov_data.find(b"mvhd")
-        if mvhd_idx < 4:
-            return meta
+                    creation_dt = datetime.datetime(1904, 1, 1) + datetime.timedelta(seconds=creation)
+                    if 1980 <= creation_dt.year <= 2100:
+                        meta["taken_at"] = creation_dt.isoformat()
+                    if timescale > 0:
+                        meta["duration"] = round(duration / timescale, 1)
+                elif version == 1 and mvhd_idx + 36 <= len(moov_data):
+                    creation = struct.unpack(">Q", moov_data[mvhd_idx + 8 : mvhd_idx + 16])[0]
+                    timescale = struct.unpack(">I", moov_data[mvhd_idx + 24 : mvhd_idx + 28])[0]
+                    duration = struct.unpack(">Q", moov_data[mvhd_idx + 28 : mvhd_idx + 36])[0]
+                    creation_dt = datetime.datetime(1904, 1, 1) + datetime.timedelta(seconds=creation)
+                    if 1980 <= creation_dt.year <= 2100:
+                        meta["taken_at"] = creation_dt.isoformat()
+                    if timescale > 0:
+                        meta["duration"] = round(duration / timescale, 1)
 
-        version = moov_data[mvhd_idx + 4]
-        if version == 0:
-            creation = struct.unpack(">I", moov_data[mvhd_idx + 8 : mvhd_idx + 12])[0]
-            timescale = struct.unpack(">I", moov_data[mvhd_idx + 16 : mvhd_idx + 20])[0]
-            duration = struct.unpack(">I", moov_data[mvhd_idx + 20 : mvhd_idx + 24])[0]
+            # Try to get dimensions from tkhd
+            tkhd_idx = moov_data.find(b"tkhd")
+            if tkhd_idx >= 4:
+                tkhd_version = moov_data[tkhd_idx + 4]
+                if tkhd_version == 0:
+                    # Width and height are fixed-point 16.16 values in tkhd v0.
+                    w_off = tkhd_idx + 76
+                    if w_off + 8 <= len(moov_data):
+                        w_fixed = struct.unpack(">I", moov_data[w_off : w_off + 4])[0]
+                        h_fixed = struct.unpack(">I", moov_data[w_off + 4 : w_off + 8])[0]
+                        meta["width"] = w_fixed >> 16
+                        meta["height"] = h_fixed >> 16
 
-            # Convert Mac epoch (1904-01-01) to datetime
-            mac_epoch = datetime.datetime(1904, 1, 1)
-            creation_dt = mac_epoch + datetime.timedelta(seconds=creation)
-            meta["taken_at"] = creation_dt.isoformat()
-
-            if timescale > 0:
-                meta["duration"] = round(duration / timescale, 1)
-
-        # Try to get dimensions from tkhd
-        tkhd_idx = moov_data.find(b"tkhd")
-        if tkhd_idx >= 4:
-            tkhd_version = moov_data[tkhd_idx + 4]
-            if tkhd_version == 0:
-                # Width and height are at offset 76-84 in tkhd v0 (as fixed-point 16.16)
-                w_off = tkhd_idx + 4 + 1 + 3 + 4 + 4 + 4 + 4 + 8 + 36 + 8  # = tkhd + 76
-                if w_off + 8 <= len(moov_data):
-                    w_fixed = struct.unpack(">I", moov_data[w_off : w_off + 4])[0]
-                    h_fixed = struct.unpack(">I", moov_data[w_off + 4 : w_off + 8])[0]
-                    meta["width"] = w_fixed >> 16
-                    meta["height"] = h_fixed >> 16
+        if not meta.get("duration") or not meta.get("width") or not meta.get("height"):
+            try:
+                import cv2
+                cap = cv2.VideoCapture(filepath)
+                fps = cap.get(cv2.CAP_PROP_FPS)
+                frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+                if not meta.get("duration") and fps > 0 and frame_count > 0:
+                    meta["duration"] = round(frame_count / fps, 1)
+                if not meta.get("width"):
+                    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                    if width > 0:
+                        meta["width"] = width
+                if not meta.get("height"):
+                    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                    if height > 0:
+                        meta["height"] = height
+                cap.release()
+            except Exception:
+                pass
 
     except Exception as e:
         logger.debug("Failed to extract MOV metadata from %s: %s", filepath, e)
@@ -525,6 +731,11 @@ def extract_mov_metadata(filepath: str) -> dict:
     meta["taken_at"] = _determine_taken_at(filepath, meta.get("taken_at"))
 
     return meta
+
+
+def extract_mov_metadata(filepath: str) -> dict:
+    """Backward-compatible alias for callers using the old MOV-specific name."""
+    return extract_video_metadata(filepath)
 
 
 def extract_aae_metadata(filepath: str) -> dict:

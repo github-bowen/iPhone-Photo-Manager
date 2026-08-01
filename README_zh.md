@@ -2,7 +2,7 @@
 
 *其他语言版本: [English](README.md), [中文](README_zh.md).*
 
-这是一个轻量级、响应式的网页应用，用于管理、组织和探索你的 iPhone 照片与视频。它能通过时间线进行展示，并利用内嵌的 EXIF 数据自动通过地理位置对媒体进行归类和分组。
+这是一个轻量级、响应式的网页应用，用于管理、组织和探索从 iPhone 与 Android 导出的照片及视频。它能通过时间线进行展示，并利用内嵌的 EXIF 数据自动通过地理位置对媒体进行归类和分组。
 
 ## 演示 (Demo)
 <p align="center">
@@ -14,12 +14,12 @@
 
 ### ✨ 核心功能
 
-一款轻量级、本地优先的 iPhone 照片网页画廊。支持 HEIC、实况照片 (MOV) 和离线反向地理编码，所有数据均在本地处理，绝不上传云端。
+一款轻量级、本地优先的手机照片网页画廊。支持 HEIC/HEIF、JPEG、PNG、WebP、AVIF、MOV、MP4、3GP、iPhone 实况照片和 Android Motion Photo。Motion Photo 内嵌视频直接从原文件流式读取，不会生成重复视频副本。
 
 - **沉浸式幻灯片播放：** 高度可配置的自动播放功能，解放双手。可按日期、国家、媒体类型筛选，调整播放速度，并支持等待实况照片和视频播放完毕再自动切换下一张。
 - **玻璃拟态（Glassmorphism）UI：** 现代化、高质感的界面设计，拥有丝滑的微动画和精美的深/浅色双主题。
 
-使用方法非常简单：只需将 iPhone 相册导出并复制到你指定的 `PHOTOS_DIR` 目录下即可。例如放在当前项目目录的 `./photos` 文件夹下（此路径可在 `.env` 文件中配置）。工具在启动时会自动扫描该目录。
+使用方法非常简单：只需将 iPhone 或 Android 相册导出并复制到你指定的 `PHOTOS_DIR` 目录下即可。例如放在当前项目目录的 `./photos` 文件夹下（此路径可在 `.env` 文件中配置）。工具在启动时会自动扫描该目录。
 
 **预期的目录结构：**
 
@@ -55,15 +55,16 @@ iphone-photo-manager/
 ### 🚀 快速开始
 
 #### 1. 环境准备
-需要 Python 3.10+。
+需要 Python 3.10+ 和 [uv](https://docs.astral.sh/uv/getting-started/installation/)。
 
 ```bash
 # 克隆项目
 git clone <repo-url>
 cd iphone-photo-manager
 
-# 安装依赖
-pip install -r requirements.txt
+# 创建虚拟环境并安装依赖
+uv venv --python 3.10
+uv pip install -r requirements.txt
 ```
 
 #### 2. 配置
@@ -96,7 +97,7 @@ copy .env.template .env
 #### 4. 启动服务
 请确保你当前位于项目根目录（例如 `iPhone-Photo-Manager`）下，然后执行：
 ```bash
-python -m server.app
+uv run --no-project python -m server.app
 ```
 启动完成后在浏览器打开：**http://127.0.0.1:8000**
 

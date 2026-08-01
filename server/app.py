@@ -9,6 +9,7 @@ import os
 import logging
 import mimetypes
 import json
+import re
 from contextlib import asynccontextmanager
 from typing import Optional
 
@@ -16,19 +17,19 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from fastapi import FastAPI, Query, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from deep_translator import GoogleTranslator
 
 from server.database import (
-    init_db, get_db, insert_photo, update_photo,
+    init_db, get_db, upsert_photo, update_photo,
     get_photos, get_photo_by_id, get_timeline, get_locations,
     get_photo_count, get_photos_without_thumbnails,
     get_photos_without_location, get_all_filepaths, delete_photo_by_filepath,
-    backfill_missing_timestamps
+    backfill_missing_timestamps, get_filepaths_below_scan_version
 )
-from server.scanner import get_all_files_on_disk, scan_specific_files
+from server.scanner import SCAN_VERSION, get_all_files_on_disk, scan_specific_files
 from server.thumbnail import generate_thumbnail, get_thumbnail_path, thumbnail_exists
 from server.geocoder import reverse_geocode, batch_reverse_geocode
 
@@ -188,9 +189,14 @@ async def _run_full_scan():
         
         missing_paths = existing_paths - disk_paths
         new_paths = disk_paths - existing_paths
+        stale_paths = await get_filepaths_below_scan_version(db, SCAN_VERSION)
+        scan_paths = new_paths | (stale_paths & disk_paths)
         
-        scan_state["total"] = len(new_paths)
-        scan_state["message"] = f"Found {len(new_paths)} new files. Updating index..."
+        scan_state["total"] = len(scan_paths)
+        scan_state["message"] = (
+            f"Found {len(new_paths)} new and {len(scan_paths - new_paths)} stale files. "
+            "Updating index..."
+        )
 
         # Remove missing photos first
         if missing_paths:
@@ -199,15 +205,15 @@ async def _run_full_scan():
                 await delete_photo_by_filepath(db, path)
 
         # Process new files
-        if new_paths:
-            logger.info("Found %d new files. Extracting metadata in batches...", len(new_paths))
-            new_paths_list = list(new_paths)
+        if scan_paths:
+            logger.info("Indexing metadata for %d files in batches...", len(scan_paths))
+            new_paths_list = list(scan_paths)
             batch_size = 100
             for i in range(0, len(new_paths_list), batch_size):
                 batch = set(new_paths_list[i:i + batch_size])
                 new_files_data = await asyncio.to_thread(scan_specific_files, PHOTOS_DIR, batch)
                 for photo_data in new_files_data:
-                    await insert_photo(db, photo_data)
+                    await upsert_photo(db, photo_data)
                 
                 scan_state["progress"] += len(batch)
                 logger.info("Imported %d / %d new files", min(i + batch_size, len(new_paths_list)), len(new_paths_list))
@@ -418,10 +424,15 @@ async def api_get_photo_file(photo_id: int):
         ext = os.path.splitext(filepath)[1].lower()
         media_types = {
             ".heic": "image/heic",
+            ".heif": "image/heif",
             ".jpg": "image/jpeg",
             ".jpeg": "image/jpeg",
             ".png": "image/png",
+            ".webp": "image/webp",
+            ".avif": "image/avif",
             ".mov": "video/quicktime",
+            ".mp4": "video/mp4",
+            ".3gp": "video/3gpp",
         }
         media_type = media_types.get(ext, "application/octet-stream")
 
@@ -455,10 +466,14 @@ async def api_get_photo_render(photo_id: int):
             raise HTTPException(status_code=404, detail="File not found")
 
         ext = os.path.splitext(filepath)[1].lower()
-        if ext in (".jpg", ".jpeg", ".png"):
+        if ext in (".jpg", ".jpeg", ".png", ".webp", ".avif"):
+            image_types = {
+                ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",
+                ".webp": "image/webp", ".avif": "image/avif",
+            }
             return FileResponse(
                 full_path,
-                media_type="image/jpeg" if "jpg" in ext or "jpeg" in ext else "image/png",
+                media_type=image_types[ext],
                 headers={"Cache-Control": f"public, max-age={HTTP_CACHE_MAX_AGE}"}
             )
 
@@ -541,6 +556,82 @@ async def api_get_live_video(photo_id: int):
         )
     finally:
         await db.close()
+
+
+def _parse_byte_range(range_header: Optional[str], total: int) -> tuple[int, int]:
+    """Return an inclusive byte range bounded to an embedded media payload."""
+    if not range_header:
+        return 0, total - 1
+    match = re.fullmatch(r"bytes=(\d*)-(\d*)", range_header.strip())
+    if not match or (not match.group(1) and not match.group(2)):
+        raise HTTPException(status_code=416, detail="Invalid byte range")
+    if not match.group(1):
+        requested_length = int(match.group(2))
+        if requested_length <= 0:
+            raise HTTPException(status_code=416, detail="Invalid byte range")
+        length = min(requested_length, total)
+        return total - length, total - 1
+    start = int(match.group(1))
+    end = int(match.group(2)) if match.group(2) else total - 1
+    if start >= total or start > end:
+        raise HTTPException(status_code=416, detail="Byte range outside media")
+    return start, min(end, total - 1)
+
+
+def _iter_file_range(filepath: str, start: int, length: int):
+    with open(filepath, "rb") as file:
+        file.seek(start)
+        remaining = length
+        while remaining > 0:
+            chunk = file.read(min(1024 * 1024, remaining))
+            if not chunk:
+                break
+            remaining -= len(chunk)
+            yield chunk
+
+
+@app.get("/api/photos/{photo_id}/motion-video")
+async def api_get_motion_video(photo_id: int, request: Request):
+    """Stream the video range appended to an Android Motion Photo."""
+    db = await get_db()
+    try:
+        photo = await get_photo_by_id(db, photo_id)
+    finally:
+        await db.close()
+
+    if not photo or not photo.get("is_motion_photo"):
+        raise HTTPException(status_code=404, detail="Motion Photo video not found")
+
+    filepath = os.path.realpath(os.path.join(PHOTOS_DIR, photo["filepath"]))
+    if not filepath.startswith(os.path.realpath(PHOTOS_DIR) + os.sep):
+        raise HTTPException(status_code=403, detail="Access denied")
+    if not os.path.exists(filepath):
+        raise HTTPException(status_code=404, detail="Motion Photo file not found")
+
+    payload_offset = int(photo["motion_photo_offset"])
+    payload_length = int(photo["motion_photo_length"])
+    if payload_offset < 0 or payload_length <= 0 or payload_offset + payload_length > os.path.getsize(filepath):
+        raise HTTPException(status_code=422, detail="Invalid Motion Photo metadata")
+
+    start, end = _parse_byte_range(request.headers.get("range"), payload_length)
+    response_length = end - start + 1
+    headers = {
+        "Accept-Ranges": "bytes",
+        "Content-Length": str(response_length),
+        "Cache-Control": f"public, max-age={HTTP_CACHE_MAX_AGE}",
+        "X-Content-Type-Options": "nosniff",
+    }
+    status_code = 200
+    if request.headers.get("range"):
+        status_code = 206
+        headers["Content-Range"] = f"bytes {start}-{end}/{payload_length}"
+
+    return StreamingResponse(
+        _iter_file_range(filepath, payload_offset + start, response_length),
+        status_code=status_code,
+        media_type=photo.get("motion_photo_mime") or "video/mp4",
+        headers=headers,
+    )
 
 
 # Global semaphore for on-demand thumbnail generation to prevent OOM from cv2

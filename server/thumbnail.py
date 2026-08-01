@@ -11,6 +11,8 @@ from PIL import Image
 # Ensure HEIC support is registered
 import pillow_heif
 pillow_heif.register_heif_opener()
+if hasattr(pillow_heif, "register_avif_opener"):
+    pillow_heif.register_avif_opener()
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +75,7 @@ def generate_thumbnail(photo_id: int, filepath: str, file_type: str) -> bool:
         return False
 
     try:
-        if file_type == "MOV":
+        if file_type in ("MOV", "MP4", "3GP"):
             return _generate_mov_thumbnail(filepath, full_path)
         else:
             return _generate_image_thumbnail(filepath, full_path)

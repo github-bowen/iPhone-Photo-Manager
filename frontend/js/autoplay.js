@@ -1,8 +1,8 @@
-import { state } from './state.js?v=10';
-import { $ } from './utils.js?v=10';
-import { resetAndReload, loadPhotos } from './gallery.js?v=10';
-import { openModal, closeModal, renderModalContent } from './modal.js?v=10';
-import { t } from './i18n.js?v=10';
+import { state } from './state.js?v=11';
+import { $ } from './utils.js?v=11';
+import { resetAndReload, loadPhotos } from './gallery.js?v=11';
+import { openModal, closeModal, renderModalContent } from './modal.js?v=11';
+import { t } from './i18n.js?v=11';
 
 let autoplayTimer = null;
 export let isAutoplaying = false;
@@ -110,8 +110,10 @@ function openAutoplayConfig() {
 
   // Pre-fill type based on current active filter
   const isAll = state.activeFilter === "all";
-  $('autoplay-type-photo').checked = isAll || state.activeFilter.includes("HEIC");
-  $('autoplay-type-video').checked = isAll || state.activeFilter.includes("MOV");
+  const photoTypes = ["HEIC", "HEIF", "JPG", "WEBP", "AVIF"];
+  const videoTypes = ["MOV", "MP4", "3GP"];
+  $('autoplay-type-photo').checked = isAll || photoTypes.some(type => state.activeFilter.includes(type));
+  $('autoplay-type-video').checked = isAll || videoTypes.some(type => state.activeFilter.includes(type));
   $('autoplay-type-screenshot').checked = isAll || state.activeFilter.includes("PNG") || state.activeFilter === "PNG";
 
   // Pre-fill sort order
@@ -161,8 +163,8 @@ async function startAutoplay() {
   }
   
   let types = [];
-  if (wantsPhoto) types.push("HEIC", "JPG");
-  if (wantsVideo) types.push("MOV");
+  if (wantsPhoto) types.push("HEIC", "HEIF", "JPG", "WEBP", "AVIF");
+  if (wantsVideo) types.push("MOV", "MP4", "3GP");
   if (wantsScreenshot) types.push("PNG");
   
   if (types.length === 0) types = ["NONE"]; // if user unchecked all
@@ -251,7 +253,8 @@ async function autoplayLoop() {
   const durationStr = durationModal ? durationModal.value : $('autoplay-duration').value;
   const durationMs = (parseInt(durationStr) || 3) * 1000;
   
-  let isVideoOrLive = photo.file_type === "MOV" || photo.is_live_photo;
+  let isVideoOrLive = ["MOV", "MP4", "3GP"].includes(photo.file_type) ||
+    photo.is_live_photo || photo.is_motion_photo;
   
   if (waitVideo && isVideoOrLive) {
     // We need to wait for the video to play
@@ -261,7 +264,7 @@ async function autoplayLoop() {
       const modalMedia = document.querySelectorAll('.modal-media');
       let videoEl = Array.from(modalMedia).find(el => el.tagName === "VIDEO");
       
-      if (!videoEl && photo.is_live_photo) {
+      if (!videoEl && (photo.is_live_photo || photo.is_motion_photo)) {
          // trigger live photo play badge
          const badge = $('modal-live-badge');
          if (badge && badge.textContent === t('play_live')) {

@@ -39,6 +39,10 @@ CREATE TABLE IF NOT EXISTS photos (
     duration REAL,
     is_live_photo INTEGER DEFAULT 0,
     live_photo_mov TEXT,
+    is_motion_photo INTEGER DEFAULT 0,
+    motion_photo_offset INTEGER,
+    motion_photo_length INTEGER,
+    motion_photo_mime TEXT,
     is_screenshot INTEGER DEFAULT 0,
     is_edited INTEGER DEFAULT 0,
     original_file TEXT,
@@ -55,12 +59,25 @@ CREATE INDEX IF NOT EXISTS idx_directory ON photos(directory);
 CREATE INDEX IF NOT EXISTS idx_is_live_photo ON photos(is_live_photo);
 """
 
+MIGRATIONS = {
+    "is_motion_photo": "INTEGER DEFAULT 0",
+    "motion_photo_offset": "INTEGER",
+    "motion_photo_length": "INTEGER",
+    "motion_photo_mime": "TEXT",
+}
+
 
 async def init_db():
     """Initialize the database and create tables if needed."""
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     async with aiosqlite.connect(DB_PATH) as db:
         await db.executescript(SCHEMA)
+        columns = {
+            row[1] for row in await db.execute_fetchall("PRAGMA table_info(photos)")
+        }
+        for name, definition in MIGRATIONS.items():
+            if name not in columns:
+                await db.execute(f"ALTER TABLE photos ADD COLUMN {name} {definition}")
         await db.commit()
 
 
@@ -86,6 +103,22 @@ async def insert_photo(db: aiosqlite.Connection, photo_data: dict) -> Optional[i
         return None
 
 
+async def upsert_photo(db: aiosqlite.Connection, photo_data: dict) -> Optional[int]:
+    """Insert a photo or refresh scanner-owned metadata for an existing path."""
+    columns = list(photo_data.keys())
+    placeholders = ", ".join(["?"] * len(columns))
+    updates = ", ".join(
+        f"{column} = excluded.{column}" for column in columns if column != "filepath"
+    )
+    cursor = await db.execute(
+        f"INSERT INTO photos ({', '.join(columns)}) VALUES ({placeholders}) "
+        f"ON CONFLICT(filepath) DO UPDATE SET {updates}",
+        list(photo_data.values()),
+    )
+    await db.commit()
+    return cursor.lastrowid if cursor.lastrowid else None
+
+
 async def update_photo(db: aiosqlite.Connection, photo_id: int, updates: dict):
     """Update a photo record by id."""
     set_clause = ", ".join([f"{k} = ?" for k in updates.keys()])
@@ -99,6 +132,16 @@ async def update_photo(db: aiosqlite.Connection, photo_id: int, updates: dict):
 async def get_all_filepaths(db: aiosqlite.Connection) -> set[str]:
     """Get all filepaths currently in the database."""
     rows = await db.execute_fetchall("SELECT filepath FROM photos")
+    return {row[0] for row in rows}
+
+
+async def get_filepaths_below_scan_version(
+    db: aiosqlite.Connection, scan_version: int
+) -> set[str]:
+    """Return files that need metadata refresh after scanner upgrades."""
+    rows = await db.execute_fetchall(
+        "SELECT filepath FROM photos WHERE COALESCE(scan_version, 0) < ?", [scan_version]
+    )
     return {row[0] for row in rows}
 
 async def delete_photo_by_filepath(db: aiosqlite.Connection, filepath: str):
@@ -258,7 +301,8 @@ async def clear_all_locations(db: aiosqlite.Connection):
 async def get_photos_without_thumbnails(db: aiosqlite.Connection, limit: int = 50) -> list[dict]:
     """Get photos that need thumbnail generation."""
     rows = await db.execute_fetchall(
-        "SELECT * FROM photos WHERE has_thumbnail = 0 AND file_type IN ('HEIC', 'JPG', 'PNG', 'MOV') LIMIT ?",
+        "SELECT * FROM photos WHERE has_thumbnail = 0 AND file_type IN "
+        "('HEIC', 'HEIF', 'JPG', 'PNG', 'WEBP', 'AVIF', 'MOV', 'MP4', '3GP') LIMIT ?",
         [limit],
     )
     return [dict(row) for row in rows]
@@ -291,4 +335,3 @@ async def backfill_missing_timestamps(db: aiosqlite.Connection, photos_dir: str)
             updated_count += 1
 
     return updated_count
-

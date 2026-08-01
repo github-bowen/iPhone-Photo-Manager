@@ -1,7 +1,9 @@
-import { state } from './state.js?v=10';
-import { t } from './i18n.js?v=10';
-import { $, formatDate, formatTime, formatFileSize, formatDuration } from './utils.js?v=10';
-import { isAutoplaying, startAutoplayFromCurrent, stopAutoplay } from './autoplay.js?v=10';
+import { state } from './state.js?v=11';
+import { t } from './i18n.js?v=11';
+import { $, formatDate, formatTime, formatFileSize, formatDuration } from './utils.js?v=11';
+import { isAutoplaying, startAutoplayFromCurrent, stopAutoplay } from './autoplay.js?v=11';
+
+const VIDEO_TYPES = new Set(["MOV", "MP4", "3GP"]);
 
 export function openModal(index) {
   if (!state.photos || state.photos.length === 0) return;
@@ -52,7 +54,7 @@ export function renderModalContent() {
     el.remove();
   });
 
-  if (photo.file_type === "MOV") {
+  if (VIDEO_TYPES.has(photo.file_type)) {
     const video = document.createElement("video");
     video.className = "modal-media";
     video.controls = true;
@@ -79,7 +81,7 @@ export function renderModalContent() {
               : "/api/photos/" + photo.id + "/thumbnail/medium";
     wrapper.appendChild(img);
 
-    if (photo.is_live_photo) {
+    if (photo.is_live_photo || photo.is_motion_photo) {
       const liveBadge = document.createElement("div");
       liveBadge.id = "modal-live-badge";
       liveBadge.textContent = t("play_live");
@@ -110,7 +112,8 @@ export function renderModalContent() {
           video.style.height = "100%";
           video.style.objectFit = "contain";
           video.autoplay = true;
-          video.src = "/api/photos/" + photo.id + "/live-video";
+          video.src = "/api/photos/" + photo.id +
+            (photo.is_motion_photo ? "/motion-video" : "/live-video");
           
           video.onended = () => {
               liveBadge.textContent = t("play_live");
@@ -224,6 +227,7 @@ function renderModalInfo(photo) {
 
   const tagsSection = createInfoSection(t("tags_sec"));
   if (photo.is_live_photo) addInfoRow(tagsSection, t("live_photo_lbl"), t("yes_lbl"));
+  if (photo.is_motion_photo) addInfoRow(tagsSection, t("motion_photo_lbl"), t("yes_lbl"));
   if (photo.is_screenshot) addInfoRow(tagsSection, t("screenshot_lbl"), t("yes_lbl"));
   if (photo.is_edited) addInfoRow(tagsSection, t("edited_lbl"), t("yes_lbl"));
   if (tagsSection.childElementCount > 1) {
@@ -241,7 +245,7 @@ function renderModalInfo(photo) {
   viewOriginalBtn.style.border = "none";
   viewOriginalBtn.textContent = t("view_original");
   viewOriginalBtn.onclick = function() {
-      if (photo.file_type === "MOV") {
+      if (VIDEO_TYPES.has(photo.file_type)) {
            window.open("/api/photos/" + photo.id + "/file", "_blank");
       } else {
            if (state.loadOriginalOnClick) {

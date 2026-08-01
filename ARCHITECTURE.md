@@ -60,7 +60,9 @@ When requesting the full-quality image via `/api/photos/{id}/render`:
 ### 3. Module Details
 
 #### 3.1 `scanner.py` — File Scanning & Metadata
-Extracts EXIF metadata from images and parses QuickTime atoms from MOV files directly (without FFmpeg). Pairs `.HEIC` files with corresponding `.MOV` files automatically to identify Live Photos.
+Extracts EXIF data from HEIC/HEIF/JPG/PNG/WebP/AVIF files and parses ISO media atoms in MOV/MP4/3GP files directly without FFmpeg. It pairs same-name `.MOV` files with iPhone Live Photos and locates embedded Android Motion Photo video using Motion Photo 1.0 XMP, legacy MicroVideoOffset, or Samsung MotionPhoto_Data metadata.
+
+For Motion Photos, SQLite stores only the embedded video's offset, length, and MIME type. `/api/photos/{id}/motion-video` supports HTTP Range and streams bytes directly from the source photo without creating a duplicate media file.
 
 #### 3.2 `thumbnail.py` — Thumbnail Generation
 Mirrors the original photo directory structure inside the cache. Utilizes Pillow to correct EXIF orientation and generates highly optimized WebP images.

@@ -1,11 +1,11 @@
-import { state } from './state.js?v=10';
-import { api } from './api.js?v=10';
-import { applyTranslations } from './i18n.js?v=10';
-import { updateStats } from './utils.js?v=10';
-import { loadPhotos, resetAndReload, setupInfiniteScroll } from './gallery.js?v=10';
-import { loadTimeline, loadLocations, closeMobileSidebar, resetSidebarTimer } from './sidebar.js?v=10';
-import { closeModal, renderModalContent } from './modal.js?v=10';
-import { initAutoplay } from './autoplay.js?v=10';
+import { state } from './state.js?v=11';
+import { api } from './api.js?v=11';
+import { applyTranslations } from './i18n.js?v=11';
+import { updateStats } from './utils.js?v=11';
+import { loadPhotos, resetAndReload, setupInfiniteScroll } from './gallery.js?v=11';
+import { loadTimeline, loadLocations, closeMobileSidebar, resetSidebarTimer } from './sidebar.js?v=11';
+import { closeModal, renderModalContent } from './modal.js?v=11';
+import { initAutoplay } from './autoplay.js?v=11';
 
 const $ = (id) => document.getElementById(id);
 

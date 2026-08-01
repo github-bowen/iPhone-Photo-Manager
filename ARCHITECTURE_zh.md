@@ -60,7 +60,9 @@
 ### 3. 模块详解
 
 #### 3.1 `scanner.py` — 文件扫描与元数据提取
-从 HEIC/JPG/PNG 提取 EXIF 数据。不依赖 ffmpeg，直接解析 QuickTime (MOV) 的二进制原子结构提取时长与定位。自动在同级目录寻找同名 `.MOV` 以识别 Live Photo。
+从 HEIC/HEIF/JPG/PNG/WebP/AVIF 提取 EXIF 数据。不依赖 ffmpeg，直接解析 MOV/MP4/3GP 的 ISO 媒体原子结构提取时长与定位。自动在同级目录寻找同名 `.MOV` 以识别 Live Photo，并解析 Android Motion Photo 1.0 XMP、旧版 MicroVideoOffset 和三星 MotionPhoto_Data 标记来定位内嵌视频。
+
+Motion Photo 只在 SQLite 中保存内嵌视频的偏移、长度和 MIME 类型。`/api/photos/{id}/motion-video` 支持 HTTP Range，从原照片中按需流式读取视频，不产生额外媒体副本。
 
 #### 3.2 `thumbnail.py` — 缩略图生成
 在缓存目录中镜像原始照片的层级结构，使用 Pillow 生成高质量、高压缩率的 WebP 缩略图。
