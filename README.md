@@ -2,7 +2,7 @@
 
 *Read this in other languages: [English](README.md), [中文](README_zh.md).*
 
-This is a lightweight, responsive web application for managing, organizing, and exploring your iPhone photos and videos. It organizes your media by timeline and automatically groups them by geocoded locations using embedded EXIF data.
+This is a lightweight, responsive web application for managing, organizing, and exploring photos and videos exported from iPhone and Android devices. It organizes your media by timeline and automatically groups them by geocoded locations using embedded EXIF data.
 
 ## Demo
 <p align="center">
@@ -14,12 +14,12 @@ This is a lightweight, responsive web application for managing, organizing, and 
 
 ### ✨ Features
 
-A lightweight, local-first web gallery for your iPhone photos. It supports HEIC, Live Photos (MOV), and reverse geocoding without uploading any data to the cloud.
+A lightweight, local-first mobile photo gallery. It supports HEIC/HEIF, JPEG, PNG, WebP, AVIF, MOV, MP4, 3GP, iPhone Live Photos, and Android Motion Photos. Embedded Motion Photo video is streamed from the source file without creating a duplicate video.
 
 - **Immersive Slideshow (Autoplay):** Sit back and enjoy your memories with a highly configurable slideshow. Filter by date, country, and media type, adjust playback speed, and choose whether to play full videos/Live Photos before advancing.
 - **Glassmorphism UI:** A premium, modern interface with smooth micro-animations and beautiful light/dark themes.
 
-To use it, simply export your iPhone photos and copy them into your configured `PHOTOS_DIR` (default is `./photos` in the project root, which you can configure in your `.env` file). The tool will automatically scan the folder on startup.
+To use it, export your iPhone or Android media and copy it into your configured `PHOTOS_DIR` (default is `./photos` in the project root, which you can configure in your `.env` file). The tool will automatically scan the folder on startup.
 
 **Expected Directory Structure:**
 
@@ -55,15 +55,16 @@ iphone-photo-manager/
 ### 🚀 Quick Start
 
 #### 1. Requirements
-Python 3.10+ is required.
+Python 3.10+ and [uv](https://docs.astral.sh/uv/getting-started/installation/) are required.
 
 ```bash
 # Clone the repository
 git clone <repo-url>
 cd iphone-photo-manager
 
-# Install dependencies
-pip install -r requirements.txt
+# Create a virtual environment and install dependencies
+uv venv --python 3.10
+uv pip install -r requirements.txt
 ```
 
 #### 2. Configuration
@@ -100,7 +101,7 @@ Place your iPhone photos into the `photos/` directory, ideally grouped by year/m
 Ensure you are in the project root directory (e.g. `iPhone-Photo-Manager`), then run:
 
 ```bash
-python -m server.app
+uv run --no-project python -m server.app
 ```
 
 On the first launch, the server will automatically:

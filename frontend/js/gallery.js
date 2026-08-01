@@ -1,10 +1,11 @@
-import { state } from './state.js?v=10';
-import { api } from './api.js?v=10';
-import { t } from './i18n.js?v=10';
-import { $, formatDateLabel, formatDuration, createEmptyState } from './utils.js?v=10';
-import { openModal } from './modal.js?v=10';
+import { state } from './state.js?v=11';
+import { api } from './api.js?v=11';
+import { t } from './i18n.js?v=11';
+import { $, formatDateLabel, formatDuration, createEmptyState } from './utils.js?v=11';
+import { openModal } from './modal.js?v=11';
 
 let galleryObserver = null;
+const VIDEO_TYPES = new Set(["MOV", "MP4", "3GP"]);
 
 function initVirtualization() {
   if (galleryObserver) {
@@ -53,12 +54,12 @@ function renderCardContent(card, photo) {
   const overlay = document.createElement("div");
   overlay.className = "photo-card-overlay";
 
-  if (photo.is_live_photo) {
+  if (photo.is_live_photo || photo.is_motion_photo) {
     const badge = document.createElement("span");
-    badge.className = "photo-card-badge live";
-    badge.textContent = "LIVE";
+    badge.className = "photo-card-badge " + (photo.is_motion_photo ? "motion" : "live");
+    badge.textContent = photo.is_motion_photo ? "MOTION" : "LIVE";
     overlay.appendChild(badge);
-  } else if (photo.file_type === "MOV") {
+  } else if (VIDEO_TYPES.has(photo.file_type)) {
     const badge = document.createElement("span");
     badge.className = "photo-card-badge video";
     const dur = photo.duration ? formatDuration(photo.duration) : t("video_dur");
@@ -75,7 +76,7 @@ function renderCardContent(card, photo) {
 
   card.appendChild(overlay);
 
-  if (photo.is_live_photo && photo.live_photo_mov) {
+  if ((photo.is_live_photo && photo.live_photo_mov) || photo.is_motion_photo) {
     let hoverTimeout;
     card.addEventListener("mouseenter", function () {
       hoverTimeout = setTimeout(() => {
@@ -84,7 +85,8 @@ function renderCardContent(card, photo) {
           video.muted = true;
           video.loop = true;
           video.playsInline = true;
-          video.src = "/api/photos/" + photo.id + "/live-video";
+          video.src = "/api/photos/" + photo.id +
+            (photo.is_motion_photo ? "/motion-video" : "/live-video");
           video.play().catch(function () {});
           card.appendChild(video);
         } else {

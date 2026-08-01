@@ -566,6 +566,11 @@ body.theme-dark .toggle-pill-bg {
   background: rgba(239, 68, 68, 0.7);
 }
 
+.photo-card-badge.motion {
+  background: rgba(8, 145, 178, 0.86);
+  color: #fff;
+}
+
 .photo-card-badge.video {
   background: rgba(59, 130, 246, 0.7);
 }

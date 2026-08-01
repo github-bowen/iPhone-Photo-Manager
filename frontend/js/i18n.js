@@ -1,4 +1,4 @@
-import { state } from './state.js?v=10';
+import { state } from './state.js?v=11';
 
 export const i18n = {
   en: {
@@ -48,6 +48,7 @@ export const i18n = {
     alt_lbl: "Altitude",
     tags_sec: "Tags",
     live_photo_lbl: "Live Photo",
+    motion_photo_lbl: "Motion Photo",
     screenshot_lbl: "Screenshot",
     edited_lbl: "Edited",
     yes_lbl: "Yes",
@@ -130,6 +131,7 @@ export const i18n = {
     alt_lbl: "海拔",
     tags_sec: "标签",
     live_photo_lbl: "实况照片",
+    motion_photo_lbl: "动态照片",
     screenshot_lbl: "截图",
     edited_lbl: "已编辑",
     yes_lbl: "是",
