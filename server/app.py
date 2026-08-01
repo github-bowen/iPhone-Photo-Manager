@@ -25,7 +25,8 @@ from server.database import (
     init_db, get_db, insert_photo, update_photo,
     get_photos, get_photo_by_id, get_timeline, get_locations,
     get_photo_count, get_photos_without_thumbnails,
-    get_photos_without_location, get_all_filepaths, delete_photo_by_filepath
+    get_photos_without_location, get_all_filepaths, delete_photo_by_filepath,
+    backfill_missing_timestamps
 )
 from server.scanner import get_all_files_on_disk, scan_specific_files
 from server.thumbnail import generate_thumbnail, get_thumbnail_path, thumbnail_exists
@@ -211,6 +212,11 @@ async def _run_full_scan():
                 scan_state["progress"] += len(batch)
                 logger.info("Imported %d / %d new files", min(i + batch_size, len(new_paths_list)), len(new_paths_list))
 
+        # Backfill missing timestamps
+        backfilled = await backfill_missing_timestamps(db, PHOTOS_DIR)
+        if backfilled > 0:
+            logger.info("Backfilled missing timestamps for %d photos.", backfilled)
+
         await db.close()
         logger.info("Phase 1 complete: %d active files on disk.", len(disk_paths))
 
@@ -235,6 +241,12 @@ async def _run_full_scan():
 
 async def _process_pending_tasks():
     """Process any pending thumbnails and geocoding."""
+    db = await get_db()
+    backfilled = await backfill_missing_timestamps(db, PHOTOS_DIR)
+    if backfilled > 0:
+        logger.info("Backfilled missing timestamps for %d photos.", backfilled)
+    await db.close()
+
     await _generate_all_thumbnails()
     await _geocode_all_photos()
     global scan_state

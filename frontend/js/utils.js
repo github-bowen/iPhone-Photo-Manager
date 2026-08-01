@@ -4,7 +4,20 @@ import { t } from './i18n.js?v=10';
 export const $ = (id) => document.getElementById(id);
 
 export function formatDateLabel(dateStr) {
-  if (dateStr === "Unknown Date" || dateStr === t("unknown_date")) return dateStr;
+  if (!dateStr || dateStr === "Unknown Date" || dateStr === t("unknown_date")) return t("unknown_date");
+  if (dateStr.endsWith("-99") || dateStr.includes("-99") || dateStr.endsWith("-00") || dateStr.includes("-00")) {
+    const parts = dateStr.split("T")[0].split("-");
+    const year = parts[0];
+    const month = parseInt(parts[1], 10);
+    const monthFormatted = month < 10 ? '0' + month : month;
+    if (state.language === "zh") {
+      return `${year}年${monthFormatted}月未确定日期`;
+    } else {
+      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      const monthName = monthNames[month - 1] || `${month}`;
+      return `${monthName} ${year} (Undetermined Date)`;
+    }
+  }
   try {
     const d = new Date(dateStr + "T12:00:00");
     return d.toLocaleDateString(state.language === "zh" ? "zh-CN" : "en-US", {
@@ -26,6 +39,19 @@ export function formatMonthLabel(monthStr) {
 
 export function formatDate(isoStr) {
   if (!isoStr) return "—";
+  if (isoStr.includes("-99") || isoStr.includes("-00")) {
+    const parts = isoStr.split("T")[0].split("-");
+    const year = parts[0];
+    const month = parseInt(parts[1], 10);
+    const monthFormatted = month < 10 ? '0' + month : month;
+    if (state.language === "zh") {
+      return `${year}年${monthFormatted}月未确定日期`;
+    } else {
+      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      const monthName = monthNames[month - 1] || `${month}`;
+      return `${monthName} ${year} (Undetermined Date)`;
+    }
+  }
   try {
     const d = new Date(isoStr);
     return d.toLocaleDateString(state.language === "zh" ? "zh-CN" : "en-US", { year: "numeric", month: "long", day: "numeric" });
@@ -35,7 +61,7 @@ export function formatDate(isoStr) {
 }
 
 export function formatTime(isoStr) {
-  if (!isoStr) return "—";
+  if (!isoStr || isoStr.includes("-99") || isoStr.includes("-00")) return "—";
   try {
     const d = new Date(isoStr);
     return d.toLocaleTimeString(state.language === "zh" ? "zh-CN" : "en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });

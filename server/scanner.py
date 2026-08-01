@@ -8,6 +8,7 @@ import os
 import struct
 import datetime
 import logging
+import re
 from typing import Optional
 from PIL import Image
 from PIL.ExifTags import TAGS, GPSTAGS
@@ -21,20 +22,105 @@ logger = logging.getLogger(__name__)
 SUPPORTED_EXTENSIONS = {".heic", ".jpg", ".jpeg", ".png", ".mov", ".aae"}
 
 
+def _determine_taken_at(filepath: str, exif_date: Optional[str] = None) -> str:
+    """
+    3-step date determination logic:
+    1. Extract Year and Month from Directory (or mtime fallback).
+    2. Try extracting precise Date and Time from EXIF or Filename.
+    3. If precise date/time unavailable, set to YYYY-MM-00T00:00:00 ('xxxx年xx月未确定日期').
+    """
+    filename = os.path.basename(filepath)
+    dirname = os.path.basename(os.path.dirname(filepath))
+
+    # --- Step 1: Extract Year and Month from Directory (or mtime fallback) ---
+    year = None
+    month = None
+
+    m_dir = re.search(r'(19\d{2}|20\d{2})[-_]?([01]\d)', dirname)
+    if m_dir:
+        y, m = int(m_dir.group(1)), int(m_dir.group(2))
+        if 1900 <= y <= 2100 and 1 <= m <= 12:
+            year, month = f"{y:04d}", f"{m:02d}"
+
+    if not year or not month:
+        try:
+            mtime = os.path.getmtime(filepath)
+            dt_m = datetime.datetime.fromtimestamp(mtime)
+            year, month = f"{dt_m.year:04d}", f"{dt_m.month:02d}"
+        except Exception:
+            dt_n = datetime.datetime.now()
+            year, month = f"{dt_n.year:04d}", f"{dt_n.month:02d}"
+
+    # --- Step 2: Try extracting precise Date and Time ---
+    if exif_date:
+        try:
+            cleaned = exif_date.replace(":", "-", 2) if exif_date.count(":") >= 2 and "T" not in exif_date else exif_date
+            dt_exif = datetime.datetime.fromisoformat(cleaned[:19])
+            return dt_exif.isoformat()
+        except ValueError:
+            pass
+
+    # 2a. Check WeChat mmexport Unix timestamp (e.g. mmexport1661820820127)
+    m_mm = re.search(r'mmexport(\d{10,13})', filename)
+    if m_mm:
+        ts = int(m_mm.group(1))
+        if ts > 1e11:
+            ts /= 1000.0
+        try:
+            dt = datetime.datetime.fromtimestamp(ts)
+            if 2000 <= dt.year <= 2030:
+                return dt.isoformat()
+        except Exception:
+            pass
+
+    # 2b. Check Filename starting with MMDD_HHMMSS (e.g. 0830_122200_...) using Step 1 Year
+    if year:
+        m_fn_start = re.search(r'^(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])[-_]([01]\d|2[0-3])([0-5]\d)([0-5]\d)', filename)
+        if m_fn_start:
+            try:
+                dt = datetime.datetime(
+                    int(year), int(m_fn_start.group(1)), int(m_fn_start.group(2)),
+                    int(m_fn_start.group(3)), int(m_fn_start.group(4)), int(m_fn_start.group(5))
+                )
+                return dt.isoformat()
+            except ValueError:
+                pass
+
+    # 2c. From Filename with YYYYMMDD_HHMMSS or YYYY-MM-DD_HHMMSS (bounded by non-digits)
+    m_fn = re.search(r'(?<!\d)(19\d{2}|20\d{2})[-_]?(0[1-9]|1[0-2])[-_]?(0[1-9]|[12]\d|3[01])[-_]?([01]\d|2[0-3])[-_]?([0-5]\d)[-_]?([0-5]\d)(?!\d)', filename)
+    if m_fn:
+        try:
+            dt = datetime.datetime(
+                int(m_fn.group(1)), int(m_fn.group(2)), int(m_fn.group(3)),
+                int(m_fn.group(4)), int(m_fn.group(5)), int(m_fn.group(6))
+            )
+            return dt.isoformat()
+        except ValueError:
+            pass
+
+    # 2d. From Filename with YYYYMMDD or YYYY-MM-DD (bounded by non-digits)
+    m_fn2 = re.search(r'(?<!\d)(19\d{2}|20\d{2})[-_]?(0[1-9]|1[0-2])[-_]?(0[1-9]|[12]\d|3[01])(?!\d)', filename)
+    if m_fn2:
+        try:
+            dt = datetime.datetime(int(m_fn2.group(1)), int(m_fn2.group(2)), int(m_fn2.group(3)))
+            return dt.isoformat()
+        except ValueError:
+            pass
+
+    # --- Step 3: If Step 2 fails, set to YYYY-MM-99T23:59:59 ---
+    return f"{year}-{month}-99T23:59:59"
+
+
 def get_all_files_on_disk(photos_dir: str) -> set[str]:
-    """Extremely fast directory traversal to get all valid photo file paths."""
+    """Fast recursive directory traversal to get all valid photo file paths."""
     valid_paths = set()
     photos_dir = os.path.realpath(photos_dir)
 
-    for direntry in sorted(os.scandir(photos_dir), key=lambda e: e.name):
-        if not direntry.is_dir():
-            continue
-            
-        subdir_path = direntry.path
-        for fname in os.listdir(subdir_path):
+    for root, _, files in os.walk(photos_dir):
+        for fname in sorted(files):
             ext = os.path.splitext(fname)[1].upper()
             if ext in {".HEIC", ".JPG", ".JPEG", ".PNG", ".MOV", ".AAE"}:
-                filepath = os.path.join(subdir_path, fname)
+                filepath = os.path.join(root, fname)
                 if os.path.isfile(filepath):
                     rel_path = os.path.relpath(filepath, photos_dir)
                     valid_paths.add(rel_path)
@@ -130,55 +216,55 @@ def extract_image_metadata(filepath: str, file_type: str) -> dict:
         if not exif:
             # For HEIC, try raw binary parsing as fallback
             if file_type == "HEIC":
-                return {**meta, **_parse_heic_exif_raw(filepath)}
-            return meta
+                raw_meta = _parse_heic_exif_raw(filepath)
+                meta.update(raw_meta)
+        else:
+            # Basic IFD0 tags
+            meta["camera_make"] = exif.get(271)  # Make
+            meta["camera_model"] = exif.get(272)  # Model
 
-        # Basic IFD0 tags
-        meta["camera_make"] = exif.get(271)  # Make
-        meta["camera_model"] = exif.get(272)  # Model
+            # EXIF IFD
+            from PIL.ExifTags import IFD
+            exif_ifd = exif.get_ifd(IFD.Exif)
+            if exif_ifd:
+                dt_orig = exif_ifd.get(36867)  # DateTimeOriginal
+                dt_dig = exif_ifd.get(36868)   # DateTimeDigitized
+                dt = dt_orig or dt_dig or exif.get(306)  # DateTime
 
-        # EXIF IFD
-        from PIL.ExifTags import IFD
-        exif_ifd = exif.get_ifd(IFD.Exif)
-        if exif_ifd:
-            dt_orig = exif_ifd.get(36867)  # DateTimeOriginal
-            dt_dig = exif_ifd.get(36868)   # DateTimeDigitized
-            dt = dt_orig or dt_dig or exif.get(306)  # DateTime
+                if dt:
+                    # Convert "2026:05:08 13:14:21" to ISO format
+                    try:
+                        parsed = datetime.datetime.strptime(dt[:19], "%Y:%m:%d %H:%M:%S")
+                        meta["taken_at"] = parsed.isoformat()
+                    except ValueError:
+                        meta["taken_at"] = dt
 
-            if dt:
-                # Convert "2026:05:08 13:14:21" to ISO format
-                try:
-                    parsed = datetime.datetime.strptime(dt[:19], "%Y:%m:%d %H:%M:%S")
-                    meta["taken_at"] = parsed.isoformat()
-                except ValueError:
-                    meta["taken_at"] = dt
+                # Timezone
+                tz = exif_ifd.get(36880) or exif_ifd.get(36881)  # OffsetTime / OffsetTimeOriginal
+                if tz:
+                    meta["timezone"] = tz
 
-            # Timezone
-            tz = exif_ifd.get(36880) or exif_ifd.get(36881)  # OffsetTime / OffsetTimeOriginal
-            if tz:
-                meta["timezone"] = tz
+                # Lens
+                lens = exif_ifd.get(42036)  # LensModel
+                if lens:
+                    meta["lens_model"] = lens
 
-            # Lens
-            lens = exif_ifd.get(42036)  # LensModel
-            if lens:
-                meta["lens_model"] = lens
+            # GPS IFD
+            gps_ifd = exif.get_ifd(IFD.GPSInfo)
+            if gps_ifd:
+                lat = _parse_gps_coord(gps_ifd.get(2), gps_ifd.get(1))  # GPSLatitude, GPSLatitudeRef
+                lng = _parse_gps_coord(gps_ifd.get(4), gps_ifd.get(3))  # GPSLongitude, GPSLongitudeRef
+                if lat is not None:
+                    meta["latitude"] = lat
+                if lng is not None:
+                    meta["longitude"] = lng
 
-        # GPS IFD
-        gps_ifd = exif.get_ifd(IFD.GPSInfo)
-        if gps_ifd:
-            lat = _parse_gps_coord(gps_ifd.get(2), gps_ifd.get(1))  # GPSLatitude, GPSLatitudeRef
-            lng = _parse_gps_coord(gps_ifd.get(4), gps_ifd.get(3))  # GPSLongitude, GPSLongitudeRef
-            if lat is not None:
-                meta["latitude"] = lat
-            if lng is not None:
-                meta["longitude"] = lng
-
-            alt = gps_ifd.get(6)  # GPSAltitude
-            if alt is not None:
-                try:
-                    meta["altitude"] = float(alt)
-                except (TypeError, ValueError):
-                    pass
+                alt = gps_ifd.get(6)  # GPSAltitude
+                if alt is not None:
+                    try:
+                        meta["altitude"] = float(alt)
+                    except (TypeError, ValueError):
+                        pass
 
         img.close()
     except Exception as e:
@@ -187,6 +273,8 @@ def extract_image_metadata(filepath: str, file_type: str) -> dict:
         if file_type == "HEIC":
             raw_meta = _parse_heic_exif_raw(filepath)
             meta.update(raw_meta)
+
+    meta["taken_at"] = _determine_taken_at(filepath, meta.get("taken_at"))
 
     return meta
 
@@ -434,6 +522,8 @@ def extract_mov_metadata(filepath: str) -> dict:
     except Exception as e:
         logger.debug("Failed to extract MOV metadata from %s: %s", filepath, e)
 
+    meta["taken_at"] = _determine_taken_at(filepath, meta.get("taken_at"))
+
     return meta
 
 
@@ -445,7 +535,6 @@ def extract_aae_metadata(filepath: str) -> dict:
             content = f.read(10000)
 
         # Extract timestamp
-        import re
         date_match = re.search(r"<date>([\d\-T:Z]+)</date>", content)
         if date_match:
             meta["taken_at"] = date_match.group(1)
@@ -453,5 +542,7 @@ def extract_aae_metadata(filepath: str) -> dict:
         meta["is_edited"] = 1
     except Exception as e:
         logger.debug("Failed to parse AAE file %s: %s", filepath, e)
+
+    meta["taken_at"] = _determine_taken_at(filepath, meta.get("taken_at"))
 
     return meta

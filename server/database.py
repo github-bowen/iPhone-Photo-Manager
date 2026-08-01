@@ -162,12 +162,28 @@ async def get_photos(
             conditions.append("(" + " OR ".join(country_conds) + ")")
 
     if date_from:
-        conditions.append("taken_at >= ?")
-        params.append(date_from)
+        if date_from.endswith("-99") or "-99T" in date_from:
+            ym = date_from[:7]
+            conditions.append("taken_at LIKE ?")
+            params.append(f"{ym}-99%")
+        elif date_from.endswith("-01T00:00:00"):
+            ym = date_from[:7]
+            conditions.append("(taken_at >= ? OR taken_at LIKE ?)")
+            params.extend([date_from, f"{ym}-99%"])
+        else:
+            conditions.append("taken_at >= ?")
+            params.append(date_from)
 
-    if date_to:
-        conditions.append("taken_at <= ?")
-        params.append(date_to)
+    if date_to and not (date_from and (date_from.endswith("-99") or "-99T" in date_from)):
+        # When date_to is a month-end date (e.g. 2026-07-31T23:59:59), also include
+        # undetermined-date photos (YYYY-MM-99T23:59:59) for that month.
+        ym_to = date_to[:7]
+        if date_from and date_from[:7] == ym_to:
+            conditions.append("(taken_at <= ? OR taken_at LIKE ?)")
+            params.extend([date_to, f"{ym_to}-99%"])
+        else:
+            conditions.append("taken_at <= ?")
+            params.append(date_to)
 
     if is_screenshot is not None:
         conditions.append("is_screenshot = ?")
@@ -205,10 +221,10 @@ async def get_timeline(db: aiosqlite.Connection, sort_order: str = "desc") -> li
     """Get photo counts grouped by date."""
     order_dir = "ASC" if sort_order.lower() == "asc" else "DESC"
     rows = await db.execute_fetchall(
-        f"""SELECT date(taken_at) as date, COUNT(*) as count
+        f"""SELECT substr(taken_at, 1, 10) as date, COUNT(*) as count
            FROM photos
            WHERE taken_at IS NOT NULL AND file_type != 'AAE' AND is_edited = 0
-           GROUP BY date(taken_at)
+           GROUP BY substr(taken_at, 1, 10)
            ORDER BY date {order_dir}"""
     )
     return [dict(row) for row in rows]
@@ -254,3 +270,25 @@ async def get_photos_without_location(db: aiosqlite.Connection) -> list[dict]:
         "SELECT id, latitude, longitude FROM photos WHERE latitude IS NOT NULL AND location_name IS NULL"
     )
     return [dict(row) for row in rows]
+
+
+async def backfill_missing_timestamps(db: aiosqlite.Connection, photos_dir: str) -> int:
+    """Find all photos and backfill/re-evaluate taken_at using strict 3-step logic."""
+    rows = await db.execute_fetchall("SELECT id, filepath, taken_at FROM photos")
+    if not rows:
+        return 0
+
+    from server.scanner import _determine_taken_at
+    updated_count = 0
+    photos_dir = os.path.realpath(photos_dir)
+
+    for photo_id, rel_path, old_taken_at in rows:
+        full_path = os.path.join(photos_dir, rel_path)
+        exif_candidate = old_taken_at if old_taken_at and not old_taken_at.endswith("-99T23:59:59") and not old_taken_at.endswith("-00T00:00:00") and not old_taken_at.endswith("-01T12:00:00") else None
+        new_taken_at = _determine_taken_at(full_path, exif_candidate)
+        if new_taken_at != old_taken_at:
+            await update_photo(db, photo_id, {"taken_at": new_taken_at})
+            updated_count += 1
+
+    return updated_count
+

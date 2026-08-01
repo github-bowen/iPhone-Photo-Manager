@@ -105,13 +105,23 @@ export function renderTimeline() {
       const daysContainer = document.createElement("div");
       daysContainer.style.paddingLeft = "15px";
       
-      for (const day of data.days) {
-          const dayItem = createSidebarItem(day.date, day.count, function(e) {
+      const sortedDays = [...data.days].sort((a, b) => {
+        const isAUndet = a.date.endsWith("-99") || a.date.endsWith("-00");
+        const isBUndet = b.date.endsWith("-99") || b.date.endsWith("-00");
+        if (isAUndet && !isBUndet) return state.sortOrder === "asc" ? 1 : -1;
+        if (!isAUndet && isBUndet) return state.sortOrder === "asc" ? -1 : 1;
+        return state.sortOrder === "asc" ? a.date.localeCompare(b.date) : b.date.localeCompare(a.date);
+      });
+
+      for (const day of sortedDays) {
+          const isUndet = day.date.endsWith("-99") || day.date.endsWith("-00");
+          const dayLabel = isUndet ? (state.language === "zh" ? "未确定日期" : "Undetermined Date") : day.date;
+          const dayItem = createSidebarItem(dayLabel, day.count, function(e) {
              e.stopPropagation();
              state.dateFrom = day.date;
              state.dateTo = day.date;
-             if (dateFromInput) dateFromInput.value = day.date;
-             if (dateToInput) dateToInput.value = day.date;
+             if (dateFromInput) dateFromInput.value = isUndet ? "" : day.date;
+             if (dateToInput) dateToInput.value = isUndet ? "" : day.date;
              resetAndReload();
              resetSidebarTimer();
              renderTimeline();
