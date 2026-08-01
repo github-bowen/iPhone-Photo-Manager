@@ -8,15 +8,13 @@ import server.database as database
 
 
 class DatabaseMigrationTests(unittest.TestCase):
-    def test_adds_motion_photo_columns_to_existing_database(self):
+    def test_adds_scanner_columns_to_existing_database(self):
         old_schema = database.SCHEMA
-        for line in (
-            "    is_motion_photo INTEGER DEFAULT 0,\n",
-            "    motion_photo_offset INTEGER,\n",
-            "    motion_photo_length INTEGER,\n",
-            "    motion_photo_mime TEXT,\n",
-        ):
-            old_schema = old_schema.replace(line, "")
+        for column in database.MIGRATIONS:
+            lines = old_schema.splitlines(keepends=True)
+            old_schema = "".join(
+                line for line in lines if not line.lstrip().startswith(f"{column} ")
+            )
 
         with tempfile.TemporaryDirectory() as temp_dir:
             db_path = os.path.join(temp_dir, "photos.db")

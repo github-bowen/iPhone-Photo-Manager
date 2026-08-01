@@ -38,7 +38,7 @@
 **设计原则**：
 1. **本地优先** — 所有处理在本机完成，照片数据不离开设备。
 2. **零配置启动** — 将照片放入 `photos/` 目录即可，无需预处理。
-3. **增量设计** — 只处理新增/删除的文件，避免重复计算。
+3. **增量设计** — 只处理新增/删除的媒体、扫描器升级和发生变化的 Google Takeout sidecar，避免重复扫描未变化文件。
 4. **离线能力** — 地理编码使用离线引擎，不依赖外部 API。
 
 ### 2. 启动与数据流
@@ -48,7 +48,7 @@
 
 #### 2.2 全量扫描流程
 扫描分为三个阶段，前端通过轮询实时展示进度：
-1. **文件索引**：计算磁盘文件路径集合与数据库路径集合的差集，执行插入或删除。
+1. **文件索引**：计算媒体路径差集，并比较 Takeout sidecar 的路径与修改时间状态，执行插入、删除或元数据刷新。
 2. **缩略图生成**：并发调用生成 WebP 缩略图（处理 EXIF 旋转方向）。
 3. **地理编码**：通过离线引擎批量解析 GPS 坐标。
 
@@ -62,6 +62,8 @@
 #### 3.1 `scanner.py` — 文件扫描与元数据提取
 从 HEIC/HEIF/JPG/PNG/WebP/AVIF 提取 EXIF 数据。不依赖 ffmpeg，直接解析 MOV/MP4/3GP 的 ISO 媒体原子结构提取时长与定位。自动在同级目录寻找同名 `.MOV` 以识别 Live Photo，并解析 Android Motion Photo 1.0 XMP、旧版 MicroVideoOffset 和三星 MotionPhoto_Data 标记来定位内嵌视频。
 
+Google Photos Takeout JSON 会按目录建立索引，并通过标准 sidecar 文件名或 JSON 内的 `title` 字段匹配媒体（后者用于兼容 Takeout 截断长 sidecar 文件名）。有效 sidecar 会优先提供拍摄时间和 GPS，并补充描述及收藏状态。数据库保存 sidecar 的相对路径和纳秒级修改时间，因此增量扫描也能识别 sidecar 的新增、替换和删除。
+
 Motion Photo 只在 SQLite 中保存内嵌视频的偏移、长度和 MIME 类型。`/api/photos/{id}/motion-video` 支持 HTTP Range，从原照片中按需流式读取视频，不产生额外媒体副本。
 
 #### 3.2 `thumbnail.py` — 缩略图生成
@@ -71,7 +73,7 @@ Motion Photo 只在 SQLite 中保存内嵌视频的偏移、长度和 MIME 类�
 基于 KD-Tree 的离线反向地理编码，将 GPS 坐标四舍五入到 2 位小数（约 1.1km 精度）后聚类去重，实现极速查询。
 
 #### 3.4 `database.py` — 数据库层
-单表 `photos`，包含 24 个字段，覆盖文件信息、拍摄参数、GPS、标签和状态。使用 `aiosqlite` 进行异步访问。
+单表 `photos` 覆盖文件信息、拍摄参数、GPS、Takeout 来源、标签和状态。使用 `aiosqlite` 进行异步访问，并在启动时通过追加式迁移兼容旧数据库。
 
 #### 3.5 前端架构 (`frontend/js/`)
 基于原生 ES Modules 的模块化单页面应用。

@@ -1,8 +1,8 @@
-import { state } from './state.js?v=11';
-import { api } from './api.js?v=11';
-import { t } from './i18n.js?v=11';
-import { $, formatDateLabel, formatDuration, createEmptyState } from './utils.js?v=11';
-import { openModal } from './modal.js?v=11';
+import { state } from './state.js?v=12';
+import { api } from './api.js?v=12';
+import { t } from './i18n.js?v=12';
+import { $, formatDateLabel, formatDuration, createEmptyState } from './utils.js?v=12';
+import { openModal } from './modal.js?v=12';
 
 let galleryObserver = null;
 const VIDEO_TYPES = new Set(["MOV", "MP4", "3GP"]);
@@ -72,6 +72,15 @@ function renderCardContent(card, photo) {
     locBadge.className = "photo-card-badge";
     locBadge.textContent = "📍";
     overlay.appendChild(locBadge);
+  }
+
+  if (photo.is_favorite) {
+    const favoriteBadge = document.createElement("span");
+    favoriteBadge.className = "photo-card-badge favorite";
+    favoriteBadge.textContent = "★";
+    favoriteBadge.title = t("favorite_lbl");
+    favoriteBadge.setAttribute("aria-label", t("favorite_lbl"));
+    overlay.appendChild(favoriteBadge);
   }
 
   card.appendChild(overlay);

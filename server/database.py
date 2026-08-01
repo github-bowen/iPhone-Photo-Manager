@@ -46,6 +46,11 @@ CREATE TABLE IF NOT EXISTS photos (
     is_screenshot INTEGER DEFAULT 0,
     is_edited INTEGER DEFAULT 0,
     original_file TEXT,
+    description TEXT,
+    is_favorite INTEGER DEFAULT 0,
+    takeout_metadata INTEGER DEFAULT 0,
+    takeout_sidecar TEXT,
+    takeout_sidecar_mtime_ns INTEGER,
     has_thumbnail INTEGER DEFAULT 0,
     scan_version INTEGER DEFAULT 1,
     created_at TEXT DEFAULT (datetime('now'))
@@ -64,6 +69,11 @@ MIGRATIONS = {
     "motion_photo_offset": "INTEGER",
     "motion_photo_length": "INTEGER",
     "motion_photo_mime": "TEXT",
+    "description": "TEXT",
+    "is_favorite": "INTEGER DEFAULT 0",
+    "takeout_metadata": "INTEGER DEFAULT 0",
+    "takeout_sidecar": "TEXT",
+    "takeout_sidecar_mtime_ns": "INTEGER",
 }
 
 
@@ -143,6 +153,16 @@ async def get_filepaths_below_scan_version(
         "SELECT filepath FROM photos WHERE COALESCE(scan_version, 0) < ?", [scan_version]
     )
     return {row[0] for row in rows}
+
+
+async def get_takeout_sidecar_state(
+    db: aiosqlite.Connection,
+) -> dict[str, tuple[Optional[str], Optional[int]]]:
+    """Return persisted Takeout sidecar identity for incremental rescans."""
+    rows = await db.execute_fetchall(
+        "SELECT filepath, takeout_sidecar, takeout_sidecar_mtime_ns FROM photos"
+    )
+    return {row[0]: (row[1], row[2]) for row in rows}
 
 async def delete_photo_by_filepath(db: aiosqlite.Connection, filepath: str):
     """Delete a photo record by filepath."""

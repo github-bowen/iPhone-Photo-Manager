@@ -17,6 +17,7 @@
 一款轻量级、本地优先的手机照片网页画廊。支持 HEIC/HEIF、JPEG、PNG、WebP、AVIF、MOV、MP4、3GP、iPhone 实况照片和 Android Motion Photo。Motion Photo 内嵌视频直接从原文件流式读取，不会生成重复视频副本。
 
 - **沉浸式幻灯片播放：** 高度可配置的自动播放功能，解放双手。可按日期、国家、媒体类型筛选，调整播放速度，并支持等待实况照片和视频播放完毕再自动切换下一张。
+- **Google Photos Takeout 元数据：** 从媒体旁的 Takeout JSON 恢复拍摄时间、GPS、海拔、描述和收藏状态，兼容 supplemental-metadata 及长文件名截断的 sidecar。
 - **玻璃拟态（Glassmorphism）UI：** 现代化、高质感的界面设计，拥有丝滑的微动画和精美的深/浅色双主题。
 
 使用方法非常简单：只需将 iPhone 或 Android 相册导出并复制到你指定的 `PHOTOS_DIR` 目录下即可。例如放在当前项目目录的 `./photos` 文件夹下（此路径可在 `.env` 文件中配置）。工具在启动时会自动扫描该目录。
@@ -93,6 +94,8 @@ copy .env.template .env
 
 #### 3. 导入照片
 将 iPhone 照片按年月分子文件夹放入 `photos/` 目录。（支持用 AirDrop 或 USB 直接导出，系统会自动配对 Live Photo）。
+
+导入 Google Photos Takeout 时，请把所有压缩分卷解压到同一目录树，并将 `PHOTOS_DIR` 指向解压后的 `Takeout/Google Photos`（也可以把该目录复制到 `photos/` 下）。请保留媒体文件与对应 `.json` 或 `.supplemental-metadata.json` 文件的相邻结构。JSON 不会出现在相册中，其中的拍摄时间、GPS、海拔、描述和收藏状态会自动应用；新增、替换或删除 sidecar 后，下次增量扫描会刷新对应媒体。
 
 #### 4. 启动服务
 请确保你当前位于项目根目录（例如 `iPhone-Photo-Manager`）下，然后执行：
