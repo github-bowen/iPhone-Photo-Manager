@@ -386,6 +386,10 @@ def parse_xmp_metadata(xmp_bytes_or_str) -> dict:
             val = (elem.text or "").strip().lower()
             if val in ("1", "true", "yes"):
                 meta["is_favorite"] = 1
+        elif tag == "UserComment":
+            text_val = (elem.text or "").strip().lower()
+            if "screenshot" in text_val:
+                meta["is_screenshot"] = 1
 
         for attr_k, attr_v in elem.attrib.items():
             attr_name = attr_k.split("}", 1)[1] if "}" in attr_k else attr_k
@@ -398,6 +402,9 @@ def parse_xmp_metadata(xmp_bytes_or_str) -> dict:
             elif attr_name == "Favorite":
                 if str(attr_v).strip().lower() in ("1", "true", "yes"):
                     meta["is_favorite"] = 1
+            elif attr_name == "UserComment":
+                if "screenshot" in str(attr_v).strip().lower():
+                    meta["is_screenshot"] = 1
             elif attr_name == "description" and "description" not in meta:
                 if str(attr_v).strip():
                     meta["description"] = str(attr_v).strip()
@@ -490,6 +497,8 @@ def _scan_single_file(
                         photo_data["description"] = xmp_meta["description"]
                     if xmp_meta.get("is_favorite"):
                         photo_data["is_favorite"] = 1
+                    if xmp_meta.get("is_screenshot"):
+                        photo_data["is_screenshot"] = 1
             except OSError:
                 pass
             break
@@ -501,12 +510,54 @@ def _scan_single_file(
         "screenshots" in path_parts
         or "screenshot" in name_lower
         or name_lower.startswith(("screencap", "screen_shot", "screen-shot"))
+        or photo_data.get("is_screenshot") == 1
     ):
         photo_data["is_screenshot"] = 1
     elif file_type == "PNG" and photo_data.get("width") and photo_data.get("height"):
         w, h = photo_data["width"], photo_data["height"]
-        if (w, h) in ((1179, 2556), (2556, 1179), (1170, 2532), (2532, 1170),
-                      (1284, 2778), (2778, 1284), (1290, 2796), (2796, 1290)):
+        SCREEN_RESOLUTIONS = {
+            # iPhone 16 Pro Max
+            (1320, 2868), (2868, 1320),
+            # iPhone 16 Pro
+            (1206, 2622), (2622, 1206),
+            # iPhone 14/15/16 Pro Max, 15/16 Plus
+            (1290, 2796), (2796, 1290),
+            # iPhone 14 Pro, 15, 15 Pro, 16
+            (1179, 2556), (2556, 1179),
+            # iPhone 12/13/14 Pro Max, 14 Plus
+            (1284, 2778), (2778, 1284),
+            # iPhone 12, 12 Pro, 13, 13 Pro, 14
+            (1170, 2532), (2532, 1170),
+            # iPhone 11 Pro Max, XS Max
+            (1242, 2688), (2688, 1242),
+            # iPhone 11 Pro, XS, X
+            (1125, 2436), (2436, 1125),
+            # iPhone 11, XR
+            (828, 1792), (1792, 828),
+            # iPhone 12 mini, 13 mini
+            (1080, 2340), (2340, 1080),
+            # iPhone 6+/7+/8+
+            (1242, 2208), (2208, 1242), (1080, 1920), (1920, 1080),
+            # iPhone 6/7/8/SE2/SE3
+            (750, 1334), (1334, 750),
+            # iPhone 5/5s/SE1
+            (640, 1136), (1136, 640),
+            # iPad Pro 12.9
+            (2048, 2732), (2732, 2048),
+            # iPad Pro 11 / Air 11
+            (1668, 2388), (2388, 1668), (1668, 2420), (2420, 1668),
+            # iPad Pro 13
+            (2064, 2752), (2752, 2064),
+            # iPad Air / 10th gen
+            (1640, 2360), (2360, 1640),
+            # iPad 10.2
+            (1620, 2160), (2160, 1620),
+            # iPad 9.7
+            (1536, 2048), (2048, 1536),
+            # iPad mini
+            (1488, 2266), (2266, 1488),
+        }
+        if (w, h) in SCREEN_RESOLUTIONS:
             photo_data["is_screenshot"] = 1
 
     # Check Google Photos Takeout sidecars
@@ -634,11 +685,12 @@ def extract_image_metadata(filepath: str, file_type: str) -> dict:
                     meta["lens_model"] = lens
 
                 # UserComment (Tag 37510)
-                if "description" not in meta:
-                    comment = exif_ifd.get(37510)
-                    parsed_comment = _decode_user_comment(comment)
-                    if parsed_comment:
-                        meta["description"] = parsed_comment
+                comment = exif_ifd.get(37510)
+                parsed_comment = _decode_user_comment(comment)
+                if parsed_comment and "screenshot" in parsed_comment.strip().lower():
+                    meta["is_screenshot"] = 1
+                elif "description" not in meta and parsed_comment:
+                    meta["description"] = parsed_comment
 
             # GPS IFD
             gps_ifd = exif.get_ifd(IFD.GPSInfo)
@@ -675,6 +727,8 @@ def extract_image_metadata(filepath: str, file_type: str) -> dict:
                 meta["description"] = xmp_meta["description"]
             if xmp_meta.get("is_favorite"):
                 meta["is_favorite"] = 1
+            if xmp_meta.get("is_screenshot"):
+                meta["is_screenshot"] = 1
 
         img.close()
     except Exception as e:

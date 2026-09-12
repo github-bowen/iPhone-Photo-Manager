@@ -194,6 +194,7 @@ async def get_photos(
     is_screenshot: Optional[bool] = None,
     is_favorite: Optional[bool] = None,
     sort_order: str = "desc",
+    category: Optional[str] = None,
 ) -> tuple[list[dict], int]:
     """Get paginated photos with optional filters. Returns (photos, total_count)."""
     conditions = ["file_type != 'AAE'"]
@@ -211,6 +212,23 @@ async def get_photos(
         " INNER JOIN photos p3 ON p3.live_photo_mov = p2.filepath "
         " WHERE p2.file_type = 'MOV'))"
     )
+
+    if category:
+        cats = [c.strip().lower() for c in category.split(",") if c.strip()]
+        cat_conds = []
+        for cat in cats:
+            if cat == "photos":
+                cat_conds.append(
+                    "(file_type IN ('HEIC', 'HEIF', 'JPG', 'JPEG', 'PNG', 'WEBP', 'AVIF') AND is_screenshot = 0)"
+                )
+            elif cat == "videos":
+                cat_conds.append("file_type IN ('MOV', 'MP4', '3GP')")
+            elif cat == "screenshots":
+                cat_conds.append("is_screenshot = 1")
+            elif cat == "favorites":
+                cat_conds.append("is_favorite = 1")
+        if cat_conds:
+            conditions.append("(" + " OR ".join(cat_conds) + ")")
 
     if file_type:
         types = [t.strip().upper() for t in file_type.split(",") if t.strip()]

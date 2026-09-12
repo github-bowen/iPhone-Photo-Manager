@@ -359,6 +359,7 @@ async def api_get_photos(
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
     file_type: Optional[str] = Query(None),
+    category: Optional[str] = Query(None),
     location: Optional[str] = Query(None),
     city: Optional[str] = Query(None),
     country: Optional[str] = Query(None),
@@ -370,6 +371,20 @@ async def api_get_photos(
     sort_order: Optional[str] = Query("desc"),
 ):
     """Get paginated list of photos with optional filters."""
+    page = page if isinstance(page, int) else 1
+    per_page = per_page if isinstance(per_page, int) else 50
+    file_type = file_type if isinstance(file_type, str) else None
+    category = category if isinstance(category, str) else None
+    location = location if isinstance(location, str) else None
+    city = city if isinstance(city, str) else None
+    country = country if isinstance(country, str) else None
+    date_from = date_from if isinstance(date_from, str) else None
+    date_to = date_to if isinstance(date_to, str) else None
+    screenshots = screenshots if isinstance(screenshots, bool) else None
+    favorites = favorites if isinstance(favorites, bool) else None
+    lang = lang if isinstance(lang, str) else None
+    sort_order = sort_order if isinstance(sort_order, str) else "desc"
+
     db = await get_db()
     try:
         photos, total = await get_photos(
@@ -377,6 +392,7 @@ async def api_get_photos(
             page=page,
             per_page=per_page,
             file_type=file_type,
+            category=category,
             location_name=location,
             city=city,
             country=country,
