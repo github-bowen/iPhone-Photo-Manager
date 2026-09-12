@@ -582,6 +582,122 @@ body.theme-dark .toggle-pill-bg {
   line-height: 1;
 }
 
+/* Interactive photo card favorite button */
+.photo-card-fav-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 17px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 6;
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity var(--transition-fast), transform var(--transition-fast), background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
+  user-select: none;
+  padding: 0;
+  line-height: 1;
+}
+
+.photo-card:hover .photo-card-fav-btn,
+.photo-card-fav-btn.active {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.photo-card-fav-btn:hover {
+  background: rgba(0, 0, 0, 0.75);
+  transform: scale(1.15);
+}
+
+.photo-card-fav-btn.active {
+  background: rgba(245, 158, 11, 0.9);
+  border-color: rgba(251, 191, 36, 0.95);
+  color: #ffffff;
+  box-shadow: 0 2px 10px rgba(245, 158, 11, 0.5);
+}
+
+.photo-card-fav-btn.active:hover {
+  background: rgba(217, 119, 6, 1);
+  transform: scale(1.15);
+}
+
+@media (hover: none) {
+  .photo-card-fav-btn {
+    opacity: 0.85;
+  }
+}
+
+/* Modal Favorite Buttons */
+.modal-top-fav-btn {
+  position: absolute;
+  top: 20px;
+  right: 70px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #fff;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: all var(--transition-fast);
+  user-select: none;
+  padding: 0;
+  line-height: 1;
+}
+
+.modal-top-fav-btn:hover {
+  background: rgba(0, 0, 0, 0.8);
+  transform: scale(1.1);
+}
+
+.modal-top-fav-btn.active {
+  background: rgba(245, 158, 11, 0.9);
+  border-color: rgba(251, 191, 36, 0.95);
+  color: #fff;
+  box-shadow: 0 2px 12px rgba(245, 158, 11, 0.5);
+}
+
+.modal-fav-btn {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  transition: all var(--transition-fast);
+}
+
+.modal-fav-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent);
+}
+
+.modal-fav-btn.active {
+  background: rgba(245, 158, 11, 0.15);
+  color: #d97706;
+  border-color: rgba(245, 158, 11, 0.5);
+  font-weight: 600;
+}
+
+.modal-fav-btn.active:hover {
+  background: rgba(245, 158, 11, 0.25);
+}
+
 /* Live Photo video overlay */
 .photo-card video {
   position: absolute;

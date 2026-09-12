@@ -372,3 +372,28 @@ async def backfill_missing_timestamps(db: aiosqlite.Connection, photos_dir: str)
             updated_count += 1
 
     return updated_count
+
+
+async def set_photo_favorite(
+    db: aiosqlite.Connection, photo_id: int, is_favorite: Optional[bool] = None
+) -> Optional[int]:
+    """Set or toggle is_favorite for a photo. If is_favorite is None, toggle."""
+    if is_favorite is None:
+        sql = "UPDATE photos SET is_favorite = CASE WHEN is_favorite = 1 THEN 0 ELSE 1 END WHERE id = ? RETURNING is_favorite, live_photo_mov"
+        params = (photo_id,)
+    else:
+        sql = "UPDATE photos SET is_favorite = ? WHERE id = ? RETURNING is_favorite, live_photo_mov"
+        params = (1 if is_favorite else 0, photo_id)
+
+    async with db.execute(sql, params) as cursor:
+        row = await cursor.fetchone()
+        if row is not None:
+            new_fav, live_mov = row[0], row[1]
+            if live_mov:
+                await db.execute(
+                    "UPDATE photos SET is_favorite = ? WHERE filepath = ?",
+                    (new_fav, live_mov),
+                )
+            await db.commit()
+            return new_fav
+    return None

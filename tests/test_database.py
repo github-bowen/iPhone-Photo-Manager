@@ -96,6 +96,64 @@ class DatabaseMigrationTests(unittest.TestCase):
 
         asyncio.run(run_test())
 
+    def test_set_and_toggle_photo_favorite(self):
+        async def run_test():
+            with tempfile.TemporaryDirectory() as temp_dir:
+                db_path = os.path.join(temp_dir, "photos.db")
+                original_path = database.DB_PATH
+                database.DB_PATH = db_path
+                try:
+                    await database.init_db()
+                    db = await database.get_db()
+                    try:
+                        # Insert a photo with a paired Live Photo MOV
+                        photo_id = await database.insert_photo(db, {
+                            "filepath": "202609/IMG_0001.HEIC",
+                            "filename": "IMG_0001.HEIC",
+                            "directory": "202609",
+                            "file_type": "HEIC",
+                            "file_size": 2048,
+                            "is_live_photo": 1,
+                            "live_photo_mov": "202609/IMG_0001.MOV",
+                        })
+                        await database.insert_photo(db, {
+                            "filepath": "202609/IMG_0001.MOV",
+                            "filename": "IMG_0001.MOV",
+                            "directory": "202609",
+                            "file_type": "MOV",
+                            "file_size": 1048576,
+                        })
+
+                        # Toggle to favorite (0 -> 1)
+                        new_fav = await database.set_photo_favorite(db, photo_id)
+                        self.assertEqual(new_fav, 1)
+
+                        # Verify photo and paired MOV are favorited
+                        p = await database.get_photo_by_id(db, photo_id)
+                        self.assertEqual(p["is_favorite"], 1)
+                        mov_rows = await db.execute_fetchall("SELECT is_favorite FROM photos WHERE filepath = '202609/IMG_0001.MOV'")
+                        self.assertEqual(mov_rows[0][0], 1)
+
+                        # Toggle back (1 -> 0)
+                        new_fav = await database.set_photo_favorite(db, photo_id)
+                        self.assertEqual(new_fav, 0)
+                        p = await database.get_photo_by_id(db, photo_id)
+                        self.assertEqual(p["is_favorite"], 0)
+
+                        # Explicitly set to 1
+                        new_fav = await database.set_photo_favorite(db, photo_id, True)
+                        self.assertEqual(new_fav, 1)
+
+                        # Explicitly set to 0
+                        new_fav = await database.set_photo_favorite(db, photo_id, False)
+                        self.assertEqual(new_fav, 0)
+                    finally:
+                        await db.close()
+                finally:
+                    database.DB_PATH = original_path
+
+        asyncio.run(run_test())
+
 
 if __name__ == "__main__":
     unittest.main()

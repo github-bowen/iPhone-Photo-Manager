@@ -1,4 +1,5 @@
 import { state } from './state.js?v=13';
+import { api } from './api.js?v=13';
 import { t } from './i18n.js?v=13';
 import { $, formatDate, formatTime, formatFileSize, formatDuration } from './utils.js?v=13';
 import { isAutoplaying, startAutoplayFromCurrent, stopAutoplay } from './autoplay.js?v=13';
@@ -48,7 +49,7 @@ export function renderModalContent() {
   const modalPrev = $("modal-prev");
   const modalNext = $("modal-next");
 
-  const existingMedia = modalImageContainer.querySelectorAll(".modal-media");
+  const existingMedia = modalImageContainer.querySelectorAll(".modal-media, .modal-top-fav-btn");
   existingMedia.forEach(function (el) {
     if (el.tagName === "VIDEO") el.pause();
     el.remove();
@@ -246,6 +247,65 @@ function renderModalInfo(photo) {
   }
 
   const actionsSection = createInfoSection(t("actions_sec"));
+
+  const topFavBtn = document.createElement("button");
+  topFavBtn.className = "modal-top-fav-btn" + (photo.is_favorite ? " active" : "");
+  topFavBtn.setAttribute("type", "button");
+  const favTitle = photo.is_favorite ? t("unfavorite_btn") : t("favorite_btn");
+  topFavBtn.title = favTitle;
+  topFavBtn.setAttribute("aria-label", favTitle);
+  topFavBtn.innerHTML = photo.is_favorite ? "★" : "☆";
+
+  const favActionBtn = document.createElement("button");
+  favActionBtn.className = "filter-btn modal-fav-btn" + (photo.is_favorite ? " active" : "");
+  favActionBtn.style.width = "100%";
+  favActionBtn.style.marginTop = "8px";
+  favActionBtn.style.justifyContent = "center";
+  favActionBtn.innerHTML = photo.is_favorite 
+    ? `⭐ ${t("unfavorite_btn")}` 
+    : `☆ ${t("favorite_btn")}`;
+
+  async function handleToggleFavorite() {
+    try {
+      const res = await api(`/api/photos/${photo.id}/favorite`, { method: "POST" });
+      if (res && res.success) {
+        photo.is_favorite = res.is_favorite ? 1 : 0;
+        topFavBtn.classList.toggle("active", !!photo.is_favorite);
+        topFavBtn.innerHTML = photo.is_favorite ? "★" : "☆";
+        const title = photo.is_favorite ? t("unfavorite_btn") : t("favorite_btn");
+        topFavBtn.title = title;
+        topFavBtn.setAttribute("aria-label", title);
+
+        favActionBtn.classList.toggle("active", !!photo.is_favorite);
+        favActionBtn.innerHTML = photo.is_favorite 
+          ? `⭐ ${t("unfavorite_btn")}` 
+          : `☆ ${t("favorite_btn")}`;
+
+        const card = document.querySelector(`.photo-card[data-id="${photo.id}"]`);
+        if (card) {
+          const cardFavBtn = card.querySelector(".photo-card-fav-btn");
+          if (cardFavBtn) {
+            cardFavBtn.classList.toggle("active", !!photo.is_favorite);
+            cardFavBtn.innerHTML = photo.is_favorite ? "★" : "☆";
+            cardFavBtn.title = title;
+            cardFavBtn.setAttribute("aria-label", title);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Failed to toggle favorite:", err);
+    }
+  }
+
+  topFavBtn.onclick = (e) => {
+    e.stopPropagation();
+    handleToggleFavorite();
+  };
+  favActionBtn.onclick = handleToggleFavorite;
+
+  modalImageContainer.appendChild(topFavBtn);
+  actionsSection.appendChild(favActionBtn);
+
   const viewOriginalBtn = document.createElement("button");
   viewOriginalBtn.className = "filter-btn";
   viewOriginalBtn.style.width = "100%";
