@@ -27,9 +27,13 @@ from server.database import (
     get_photos, get_photo_by_id, get_timeline, get_locations,
     get_photo_count, get_photos_without_thumbnails,
     get_photos_without_location, get_all_filepaths, delete_photo_by_filepath,
-    backfill_missing_timestamps, get_filepaths_below_scan_version
+    backfill_missing_timestamps, get_filepaths_below_scan_version,
+    get_takeout_sidecar_state
 )
-from server.scanner import SCAN_VERSION, get_all_files_on_disk, scan_specific_files
+from server.scanner import (
+    SCAN_VERSION, build_takeout_sidecar_indexes, get_all_files_on_disk,
+    get_takeout_sidecar_state_on_disk, scan_specific_files
+)
 from server.thumbnail import generate_thumbnail, get_thumbnail_path, thumbnail_exists
 from server.geocoder import reverse_geocode, batch_reverse_geocode
 
@@ -190,11 +194,23 @@ async def _run_full_scan():
         missing_paths = existing_paths - disk_paths
         new_paths = disk_paths - existing_paths
         stale_paths = await get_filepaths_below_scan_version(db, SCAN_VERSION)
-        scan_paths = new_paths | (stale_paths & disk_paths)
+        stored_sidecars = await get_takeout_sidecar_state(db)
+        takeout_indexes = await asyncio.to_thread(
+            build_takeout_sidecar_indexes, PHOTOS_DIR, disk_paths
+        )
+        current_sidecars = await asyncio.to_thread(
+            get_takeout_sidecar_state_on_disk, PHOTOS_DIR, disk_paths, takeout_indexes
+        )
+        sidecar_changed_paths = {
+            path for path in disk_paths
+            if current_sidecars.get(path, (None, None))
+            != stored_sidecars.get(path, (None, None))
+        }
+        scan_paths = new_paths | (stale_paths & disk_paths) | sidecar_changed_paths
         
         scan_state["total"] = len(scan_paths)
         scan_state["message"] = (
-            f"Found {len(new_paths)} new and {len(scan_paths - new_paths)} stale files. "
+            f"Found {len(new_paths)} new and {len(scan_paths - new_paths)} changed files. "
             "Updating index..."
         )
 
@@ -211,7 +227,9 @@ async def _run_full_scan():
             batch_size = 100
             for i in range(0, len(new_paths_list), batch_size):
                 batch = set(new_paths_list[i:i + batch_size])
-                new_files_data = await asyncio.to_thread(scan_specific_files, PHOTOS_DIR, batch)
+                new_files_data = await asyncio.to_thread(
+                    scan_specific_files, PHOTOS_DIR, batch, takeout_indexes
+                )
                 for photo_data in new_files_data:
                     await upsert_photo(db, photo_data)
                 
@@ -322,12 +340,13 @@ async def _geocode_all_photos():
     coords = [(p["latitude"], p["longitude"]) for p in photos]
     locations = await asyncio.to_thread(batch_reverse_geocode, coords)
 
-    for photo, location in zip(photos, locations):
-        if location:
-            await update_photo(db, photo["id"], {"location_name": location})
+    updates = [(location, photo["id"]) for photo, location in zip(photos, locations) if location]
+    if updates:
+        await db.executemany("UPDATE photos SET location_name = ? WHERE id = ?", updates)
+        await db.commit()
 
     await db.close()
-    logger.info("Geocoding complete: %d locations resolved.", sum(1 for l in locations if l))
+    logger.info("Geocoding complete: %d locations resolved.", len(updates))
 
 
 # --- API Endpoints ---
@@ -343,6 +362,7 @@ async def api_get_photos(
     date_from: Optional[str] = Query(None),
     date_to: Optional[str] = Query(None),
     screenshots: Optional[bool] = Query(None),
+    favorites: Optional[bool] = Query(None),
     lang: Optional[str] = Query(None),
     sort_order: Optional[str] = Query("desc"),
 ):
@@ -360,6 +380,7 @@ async def api_get_photos(
             date_from=date_from,
             date_to=date_to,
             is_screenshot=screenshots,
+            is_favorite=favorites,
             sort_order=sort_order,
         )
         target_lang = lang if lang else os.getenv("APP_LANGUAGE", "zh")

@@ -1,11 +1,11 @@
-import { state } from './state.js?v=11';
-import { api } from './api.js?v=11';
-import { applyTranslations } from './i18n.js?v=11';
-import { updateStats } from './utils.js?v=11';
-import { loadPhotos, resetAndReload, setupInfiniteScroll } from './gallery.js?v=11';
-import { loadTimeline, loadLocations, closeMobileSidebar, resetSidebarTimer } from './sidebar.js?v=11';
-import { closeModal, renderModalContent } from './modal.js?v=11';
-import { initAutoplay } from './autoplay.js?v=11';
+import { state } from './state.js?v=13';
+import { api } from './api.js?v=13';
+import { applyTranslations } from './i18n.js?v=13';
+import { updateStats } from './utils.js?v=13';
+import { loadPhotos, resetAndReload, setupInfiniteScroll } from './gallery.js?v=13';
+import { loadTimeline, loadLocations, closeMobileSidebar, resetSidebarTimer } from './sidebar.js?v=13';
+import { closeModal, renderModalContent } from './modal.js?v=13';
+import { initAutoplay } from './autoplay.js?v=13';
 
 const $ = (id) => document.getElementById(id);
 
@@ -44,18 +44,24 @@ async function checkScanStatus() {
       }
       if (scanBannerProgress) scanBannerProgress.style.width = pct + "%";
 
-      if (!state.scanComplete) {
+      if (state.photos.length === 0) {
+        await loadPhotos(false);
+        if (state.photos.length > 0) {
+          await loadTimeline();
+          await loadLocations();
+          updateStats();
+        }
+      }
+
+      if (state.photos.length === 0) {
         if (loadingOverlay) loadingOverlay.classList.remove("hidden");
         if (loadingText) loadingText.textContent = status.message || status.status;
         if (loadingProgressBar) loadingProgressBar.style.width = pct + "%";
+      } else {
+        if (loadingOverlay) loadingOverlay.classList.add("hidden");
       }
 
       setTimeout(checkScanStatus, 2000);
-
-      if (status.progress > 100 && state.photos.length === 0) {
-        state.currentPage = 1;
-        loadPhotos(false);
-      }
     }
   } catch (e) {
     setTimeout(checkScanStatus, 5000);

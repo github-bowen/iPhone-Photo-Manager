@@ -1,7 +1,7 @@
-import { state } from './state.js?v=11';
-import { t } from './i18n.js?v=11';
-import { $, formatDate, formatTime, formatFileSize, formatDuration } from './utils.js?v=11';
-import { isAutoplaying, startAutoplayFromCurrent, stopAutoplay } from './autoplay.js?v=11';
+import { state } from './state.js?v=13';
+import { t } from './i18n.js?v=13';
+import { $, formatDate, formatTime, formatFileSize, formatDuration } from './utils.js?v=13';
+import { isAutoplaying, startAutoplayFromCurrent, stopAutoplay } from './autoplay.js?v=13';
 
 const VIDEO_TYPES = new Set(["MOV", "MP4", "3GP"]);
 
@@ -185,6 +185,15 @@ function renderModalInfo(photo) {
     modalInfo.appendChild(loc);
   }
 
+  if (photo.description) {
+    const descriptionSection = createInfoSection(t("description_sec"));
+    const description = document.createElement("div");
+    description.className = "modal-info-description";
+    description.textContent = photo.description;
+    descriptionSection.appendChild(description);
+    modalInfo.appendChild(descriptionSection);
+  }
+
   if (photo.taken_at) {
     const section = createInfoSection(t("date_time_sec"));
     addInfoRow(section, t("date_lbl"), formatDate(photo.taken_at));
@@ -230,6 +239,8 @@ function renderModalInfo(photo) {
   if (photo.is_motion_photo) addInfoRow(tagsSection, t("motion_photo_lbl"), t("yes_lbl"));
   if (photo.is_screenshot) addInfoRow(tagsSection, t("screenshot_lbl"), t("yes_lbl"));
   if (photo.is_edited) addInfoRow(tagsSection, t("edited_lbl"), t("yes_lbl"));
+  if (photo.is_favorite) addInfoRow(tagsSection, t("favorite_lbl"), t("yes_lbl"));
+  if (photo.takeout_metadata) addInfoRow(tagsSection, t("takeout_lbl"), t("yes_lbl"));
   if (tagsSection.childElementCount > 1) {
     modalInfo.appendChild(tagsSection);
   }

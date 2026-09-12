@@ -17,6 +17,7 @@ This is a lightweight, responsive web application for managing, organizing, and 
 A lightweight, local-first mobile photo gallery. It supports HEIC/HEIF, JPEG, PNG, WebP, AVIF, MOV, MP4, 3GP, iPhone Live Photos, and Android Motion Photos. Embedded Motion Photo video is streamed from the source file without creating a duplicate video.
 
 - **Immersive Slideshow (Autoplay):** Sit back and enjoy your memories with a highly configurable slideshow. Filter by date, country, and media type, adjust playback speed, and choose whether to play full videos/Live Photos before advancing.
+- **Google Photos Takeout metadata:** Imports capture time, GPS, altitude, descriptions, and favorites from adjacent Takeout JSON sidecars, including supplemental-metadata and truncated sidecar filenames.
 - **Glassmorphism UI:** A premium, modern interface with smooth micro-animations and beautiful light/dark themes.
 
 To use it, export your iPhone or Android media and copy it into your configured `PHOTOS_DIR` (default is `./photos` in the project root, which you can configure in your `.env` file). The tool will automatically scan the folder on startup.
@@ -95,6 +96,8 @@ Key configuration options (`.env`):
 
 Place your iPhone photos into the `photos/` directory, ideally grouped by year/month subfolders.
 *(Hint: You can use AirDrop or USB to export directly. The system automatically pairs `.HEIC` and `.MOV` files for Live Photos).*
+
+For a Google Photos Takeout export, extract all archive parts into the same directory tree and set `PHOTOS_DIR` to the extracted `Takeout/Google Photos` directory (or copy that directory under `photos/`). Keep each media file beside its `.json` or `.supplemental-metadata.json` file. The JSON files are not shown as media; their capture time, GPS, altitude, description, and favorite state are applied automatically. Adding, replacing, or removing a sidecar is detected by the next incremental scan.
 
 #### 4. Start the Server
 

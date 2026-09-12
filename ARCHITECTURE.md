@@ -38,7 +38,7 @@ This document explains the technical architecture, data flows, module design, an
 **Design Principles:**
 1. **Local-First**: All processing happens on your device. No data leaves your machine.
 2. **Zero-Config Import**: Just drop photos into the `photos/` directory.
-3. **Incremental**: Only processes new or deleted files, avoiding redundant computations.
+3. **Incremental**: Processes new/deleted media, scanner upgrades, and changed Google Takeout sidecars without rescanning unchanged files.
 4. **Offline Capability**: Geocoding uses an offline engine; no external API keys needed.
 
 ### 2. Startup & Data Flow
@@ -48,7 +48,7 @@ When `app.py` starts, it initializes the SQLite schema. Based on the database co
 
 #### 2.2 Full Scan Process
 The scan has three phases, with real-time progress broadcasted via `/api/scan/status`:
-1. **File Indexing**: Calculates the difference between disk files and database records to insert or delete entries.
+1. **File Indexing**: Calculates media path differences and compares stored Takeout sidecar path/mtime state to insert, delete, or refresh entries.
 2. **Thumbnail Generation**: Concurrently generates WebP thumbnails (small and medium sizes).
 3. **Geocoding**: Batch reverse geocoding utilizing clustered coordinates and `reverse_geocoder`.
 
@@ -62,6 +62,8 @@ When requesting the full-quality image via `/api/photos/{id}/render`:
 #### 3.1 `scanner.py` — File Scanning & Metadata
 Extracts EXIF data from HEIC/HEIF/JPG/PNG/WebP/AVIF files and parses ISO media atoms in MOV/MP4/3GP files directly without FFmpeg. It pairs same-name `.MOV` files with iPhone Live Photos and locates embedded Android Motion Photo video using Motion Photo 1.0 XMP, legacy MicroVideoOffset, or Samsung MotionPhoto_Data metadata.
 
+Google Photos Takeout JSON is indexed per directory and matched by the conventional sidecar filename or the JSON `title` field (needed when Takeout truncates long sidecar names). Valid sidecars override capture time and GPS when present and add description/favorite metadata. Their relative path and nanosecond mtime are stored so incremental scans also detect sidecar additions, replacements, and removals.
+
 For Motion Photos, SQLite stores only the embedded video's offset, length, and MIME type. `/api/photos/{id}/motion-video` supports HTTP Range and streams bytes directly from the source photo without creating a duplicate media file.
 
 #### 3.2 `thumbnail.py` — Thumbnail Generation
@@ -71,7 +73,7 @@ Mirrors the original photo directory structure inside the cache. Utilizes Pillow
 Uses a KD-Tree based offline reverse geocoder. Coordinates are rounded to 2 decimal places (approx. 1.1km precision) for clustering and deduplication.
 
 #### 3.4 `database.py` — SQLite Layer
-A single `photos` table with 24 columns covering file info, GPS, EXIF parameters, and metadata tags. Async access via `aiosqlite`.
+A single `photos` table covers file info, GPS, EXIF parameters, Takeout provenance, and metadata tags. Async access uses `aiosqlite`, with additive startup migrations for existing databases.
 
 #### 3.5 Frontend Architecture (`frontend/js/`)
 A modular single-page application built with Vanilla ES Modules.

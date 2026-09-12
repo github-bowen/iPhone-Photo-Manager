@@ -575,6 +575,13 @@ body.theme-dark .toggle-pill-bg {
   background: rgba(59, 130, 246, 0.7);
 }
 
+.photo-card-badge.favorite {
+  background: rgba(180, 83, 9, 0.88);
+  color: #fff7cc;
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
 /* Live Photo video overlay */
 .photo-card video {
   position: absolute;
@@ -934,6 +941,14 @@ body.theme-dark .toggle-pill-bg {
   padding: var(--space-xs) 0;
   font-size: 0.8rem;
   border-bottom: 1px solid var(--border-subtle);
+}
+
+.modal-info-description {
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .modal-info-label {

@@ -7,6 +7,7 @@ and parses MOV metadata.
 import os
 import struct
 import datetime
+import json
 import logging
 import re
 import xml.etree.ElementTree as ET
@@ -22,11 +23,168 @@ if hasattr(pillow_heif, "register_avif_opener"):
 
 logger = logging.getLogger(__name__)
 
-SCAN_VERSION = 2
+SCAN_VERSION = 3
 IMAGE_EXTENSIONS = {".heic", ".heif", ".jpg", ".jpeg", ".png", ".webp", ".avif"}
 VIDEO_EXTENSIONS = {".mov", ".mp4", ".3gp"}
 SIDECAR_EXTENSIONS = {".aae"}
 SUPPORTED_EXTENSIONS = IMAGE_EXTENSIONS | VIDEO_EXTENSIONS | SIDECAR_EXTENSIONS
+TAKEOUT_METADATA_KEYS = {
+    "photoTakenTime", "creationTime", "geoData", "geoDataExif", "description", "favorited"
+}
+MAX_TAKEOUT_SIDECAR_SIZE = 2 * 1024 * 1024
+
+
+def _load_takeout_sidecar(filepath: str) -> Optional[dict]:
+    """Load a Google Photos Takeout metadata sidecar, ignoring unrelated JSON."""
+    try:
+        if os.path.getsize(filepath) > MAX_TAKEOUT_SIDECAR_SIZE:
+            return None
+        with open(filepath, "r", encoding="utf-8-sig") as file:
+            data = json.load(file)
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return None
+
+    if not isinstance(data, dict) or not isinstance(data.get("title"), str):
+        return None
+    if not TAKEOUT_METADATA_KEYS.intersection(data):
+        return None
+    return data
+
+
+def _build_takeout_sidecar_index(directory: str, filenames: set[str]) -> dict:
+    """Index valid Takeout JSON by filename and embedded media title."""
+    by_name = {}
+    by_title = {}
+    for sidecar_name in sorted(filenames):
+        if not sidecar_name.lower().endswith(".json"):
+            continue
+        sidecar_path = os.path.join(directory, sidecar_name)
+        data = _load_takeout_sidecar(sidecar_path)
+        if data is None:
+            continue
+        try:
+            mtime_ns = os.stat(sidecar_path).st_mtime_ns
+        except OSError:
+            continue
+        record = (sidecar_name, data, mtime_ns)
+        by_name[sidecar_name.casefold()] = record
+        by_title.setdefault(data["title"].casefold(), record)
+    return {"by_name": by_name, "by_title": by_title}
+
+
+def _find_takeout_sidecar(filename: str, index: dict) -> Optional[tuple[str, dict, int]]:
+    """Find direct, supplemental-metadata, or title-matched Takeout JSON."""
+    for candidate in (
+        f"{filename}.supplemental-metadata.json",
+        f"{filename}.json",
+    ):
+        record = index["by_name"].get(candidate.casefold())
+        if record is not None:
+            return record
+    return index["by_title"].get(filename.casefold())
+
+
+def _takeout_timestamp(value) -> Optional[str]:
+    if not isinstance(value, dict):
+        return None
+    try:
+        timestamp = float(value.get("timestamp"))
+        parsed = datetime.datetime.fromtimestamp(timestamp, tz=datetime.timezone.utc)
+    except (TypeError, ValueError, OverflowError, OSError):
+        return None
+    if not 1900 <= parsed.year <= 2100:
+        return None
+    return parsed.isoformat()
+
+
+def _takeout_geo(data: dict) -> dict:
+    for key in ("geoData", "geoDataExif"):
+        value = data.get(key)
+        if not isinstance(value, dict):
+            continue
+        try:
+            latitude = float(value.get("latitude"))
+            longitude = float(value.get("longitude"))
+        except (TypeError, ValueError):
+            continue
+        if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
+            continue
+        # Takeout uses 0,0 when a media item has no location.
+        if latitude == 0 and longitude == 0:
+            continue
+        result = {"latitude": latitude, "longitude": longitude}
+        try:
+            result["altitude"] = float(value.get("altitude"))
+        except (TypeError, ValueError):
+            pass
+        return result
+    return {}
+
+
+def extract_takeout_metadata(data: dict) -> dict:
+    """Convert a Google Photos Takeout sidecar into database metadata."""
+    metadata = _takeout_geo(data)
+    taken_at = _takeout_timestamp(data.get("photoTakenTime"))
+    if taken_at is None:
+        taken_at = _takeout_timestamp(data.get("creationTime"))
+    if taken_at is not None:
+        metadata["taken_at"] = taken_at
+        metadata["timezone"] = "UTC"
+
+    description = data.get("description")
+    if isinstance(description, str) and description.strip():
+        metadata["description"] = description.strip()
+    if isinstance(data.get("favorited"), bool):
+        metadata["is_favorite"] = int(data["favorited"])
+    return metadata
+
+
+def build_takeout_sidecar_indexes(
+    photos_dir: str, media_paths: set[str]
+) -> dict[str, dict]:
+    """Build one reusable Takeout index for each media directory."""
+    photos_dir = os.path.realpath(photos_dir)
+    indexes = {}
+    for subdir_name in {os.path.dirname(path) for path in media_paths}:
+        subdir_path = os.path.join(photos_dir, subdir_name)
+        try:
+            files_in_dir = set(os.listdir(subdir_path))
+        except OSError:
+            continue
+        indexes[subdir_name] = _build_takeout_sidecar_index(
+            subdir_path, files_in_dir
+        )
+    return indexes
+
+
+def get_takeout_sidecar_state_on_disk(
+    photos_dir: str,
+    media_paths: set[str],
+    takeout_indexes: Optional[dict[str, dict]] = None,
+) -> dict[str, tuple[str, int]]:
+    """Return each media item's current Takeout sidecar path and modification time."""
+    dir_to_files = {}
+    for rel_path in media_paths:
+        subdir_name, filename = os.path.split(rel_path)
+        dir_to_files.setdefault(subdir_name, []).append(filename)
+
+    if takeout_indexes is None:
+        takeout_indexes = build_takeout_sidecar_indexes(photos_dir, media_paths)
+
+    state = {}
+    for subdir_name, filenames in dir_to_files.items():
+        index = takeout_indexes.get(subdir_name)
+        if index is None:
+            continue
+        for filename in filenames:
+            record = _find_takeout_sidecar(filename, index)
+            if record is not None:
+                sidecar_name, _, mtime_ns = record
+                state[os.path.join(subdir_name, filename)] = (
+                    os.path.join(subdir_name, sidecar_name),
+                    mtime_ns,
+                )
+    return state
 
 
 def _determine_taken_at(filepath: str, exif_date: Optional[str] = None) -> str:
@@ -135,7 +293,11 @@ def get_all_files_on_disk(photos_dir: str) -> set[str]:
     return valid_paths
 
 
-def scan_specific_files(photos_dir: str, target_paths: set[str]) -> list[dict]:
+def scan_specific_files(
+    photos_dir: str,
+    target_paths: set[str],
+    takeout_indexes: Optional[dict[str, dict]] = None,
+) -> list[dict]:
     """Extract metadata only for the specifically requested paths."""
     results = []
     photos_dir = os.path.realpath(photos_dir)
@@ -156,6 +318,13 @@ def scan_specific_files(photos_dir: str, target_paths: set[str]) -> list[dict]:
         # Get full list of files in this directory to handle pairings (e.g. .MOV exists)
         files_in_dir = set(os.listdir(subdir_path))
         files_by_lower = {name.lower(): name for name in files_in_dir}
+        takeout_index = (
+            takeout_indexes.get(subdir_name)
+            if takeout_indexes is not None
+            else _build_takeout_sidecar_index(subdir_path, files_in_dir)
+        )
+        if takeout_index is None:
+            takeout_index = {"by_name": {}, "by_title": {}}
         
         for fname in new_fnames:
             filepath = os.path.join(subdir_path, fname)
@@ -182,6 +351,11 @@ def scan_specific_files(photos_dir: str, target_paths: set[str]) -> list[dict]:
                 "is_screenshot": 0,
                 "is_edited": 0,
                 "original_file": None,
+                "description": None,
+                "is_favorite": 0,
+                "takeout_metadata": 0,
+                "takeout_sidecar": None,
+                "takeout_sidecar_mtime_ns": None,
             }
             
             # Detect edited versions (IMG_E*)
@@ -227,6 +401,25 @@ def scan_specific_files(photos_dir: str, target_paths: set[str]) -> list[dict]:
                 if (w, h) in ((1179, 2556), (2556, 1179), (1170, 2532), (2532, 1170),
                               (1284, 2778), (2778, 1284), (1290, 2796), (2796, 1290)):
                     photo_data["is_screenshot"] = 1
+
+            if ext.lower() in IMAGE_EXTENSIONS | VIDEO_EXTENSIONS:
+                takeout_record = _find_takeout_sidecar(fname, takeout_index)
+                if takeout_record is not None:
+                    sidecar_name, takeout_data, mtime_ns = takeout_record
+                    takeout_meta = extract_takeout_metadata(takeout_data)
+                    # If camera EXIF already provided a valid non-undetermined taken_at,
+                    # and takeout only has creationTime (not photoTakenTime), don't overwrite with upload time.
+                    if (
+                        photo_data.get("taken_at")
+                        and not photo_data["taken_at"].endswith("-99T23:59:59")
+                        and not takeout_data.get("photoTakenTime")
+                    ):
+                        takeout_meta.pop("taken_at", None)
+                        takeout_meta.pop("timezone", None)
+                    photo_data.update(takeout_meta)
+                    photo_data["takeout_metadata"] = 1
+                    photo_data["takeout_sidecar"] = os.path.join(subdir_name, sidecar_name)
+                    photo_data["takeout_sidecar_mtime_ns"] = mtime_ns
 
             results.append(photo_data)
 

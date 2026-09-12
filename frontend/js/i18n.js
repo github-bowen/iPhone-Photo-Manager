@@ -1,4 +1,4 @@
-import { state } from './state.js?v=11';
+import { state } from './state.js?v=13';
 
 export const i18n = {
   en: {
@@ -14,6 +14,7 @@ export const i18n = {
     filter_photos: "Photos",
     filter_videos: "Videos",
     filter_screenshots: "Screenshots",
+    filter_favorites: "Favorites",
     date_from: "From date",
     date_to: "To date",
     load_more: "Load More",
@@ -46,11 +47,14 @@ export const i18n = {
     lat_lbl: "Latitude",
     lng_lbl: "Longitude",
     alt_lbl: "Altitude",
+    description_sec: "Description",
     tags_sec: "Tags",
     live_photo_lbl: "Live Photo",
     motion_photo_lbl: "Motion Photo",
     screenshot_lbl: "Screenshot",
     edited_lbl: "Edited",
+    favorite_lbl: "Favorite",
+    takeout_lbl: "Google Photos Takeout",
     yes_lbl: "Yes",
     all_photos: "All Photos",
     all_locations: "All Locations",
@@ -97,6 +101,7 @@ export const i18n = {
     filter_photos: "照片",
     filter_videos: "视频",
     filter_screenshots: "截图",
+    filter_favorites: "⭐ 收藏",
     date_from: "开始日期",
     date_to: "结束日期",
     load_more: "加载更多",
@@ -129,11 +134,14 @@ export const i18n = {
     lat_lbl: "纬度",
     lng_lbl: "经度",
     alt_lbl: "海拔",
+    description_sec: "描述",
     tags_sec: "标签",
     live_photo_lbl: "实况照片",
     motion_photo_lbl: "动态照片",
     screenshot_lbl: "截图",
     edited_lbl: "已编辑",
+    favorite_lbl: "收藏",
+    takeout_lbl: "Google Photos Takeout",
     yes_lbl: "是",
     all_photos: "所有照片",
     all_locations: "所有地点",
