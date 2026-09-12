@@ -803,8 +803,15 @@ def extract_motion_photo_metadata(filepath: str) -> dict:
     try:
         file_size = os.path.getsize(filepath)
         with open(filepath, "rb") as file:
-            head = file.read(min(file_size, 8 * 1024 * 1024))
+            head = file.read(min(file_size, 512 * 1024))
     except OSError:
+        return {}
+
+    if (
+        b"MotionPhoto" not in head
+        and b"MicroVideo" not in head
+        and b"MotionPhoto_Data" not in head
+    ):
         return {}
 
     motion_flag, video_length, legacy_offset, video_mime = _motion_xmp_values(head)

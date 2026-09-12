@@ -113,7 +113,9 @@ async def insert_photo(db: aiosqlite.Connection, photo_data: dict) -> Optional[i
         return None
 
 
-async def upsert_photo(db: aiosqlite.Connection, photo_data: dict) -> Optional[int]:
+async def upsert_photo(
+    db: aiosqlite.Connection, photo_data: dict, commit: bool = True
+) -> Optional[int]:
     """Insert a photo or refresh scanner-owned metadata for an existing path."""
     columns = list(photo_data.keys())
     placeholders = ", ".join(["?"] * len(columns))
@@ -134,7 +136,8 @@ async def upsert_photo(db: aiosqlite.Connection, photo_data: dict) -> Optional[i
         f"ON CONFLICT(filepath) DO UPDATE SET {updates}",
         list(photo_data.values()),
     )
-    await db.commit()
+    if commit:
+        await db.commit()
     return cursor.lastrowid if cursor.lastrowid else None
 
 
