@@ -16,6 +16,9 @@ This is a lightweight, responsive web application for managing, organizing, and 
 
 A lightweight, local-first mobile photo gallery. It supports HEIC/HEIF, JPEG, PNG, WebP, AVIF, MOV, MP4, 3GP, iPhone Live Photos, and Android Motion Photos. Embedded Motion Photo video is streamed from the source file without creating a duplicate video.
 
+- **⭐ Interactive Photo Favoriting:** Toggle favorites seamlessly with one click on gallery cards or inside the modal lightbox. Includes real-time bidirectional syncing, a dedicated "⭐ Favorites" filter view, and smooth card exit animations when unfavoriting.
+- **Smart Categorization & Bilingual Search:** 5 semantic categories: All, Photos, Videos, Screenshots (with expanded resolution & iOS/Android EXIF/XMP screenshot detection), and ⭐ Favorites. Full bilingual fuzzy search supporting queries in both Chinese and English (e.g. "苏黎世" / "Zurich", "Delft", "北京").
+- **Seamless Modal Lightbox Navigation:** Full-screen glassmorphism viewer with navigation buttons, keyboard arrows, mouse wheel, and **mobile touch swipe gestures**. Automatically fetches the next page when reaching the end of loaded photos, with infinite wrap-around support.
 - **Immersive Slideshow (Autoplay):** Sit back and enjoy your memories with a highly configurable slideshow. Filter by date, country, and media type, adjust playback speed, and choose whether to play full videos/Live Photos before advancing.
 - **Google Photos Takeout metadata:** Imports capture time, GPS, altitude, descriptions, and favorites from adjacent Takeout JSON sidecars, including supplemental-metadata and truncated sidecar filenames.
 - **Glassmorphism UI:** A premium, modern interface with smooth micro-animations and beautiful light/dark themes.
@@ -41,15 +44,18 @@ iphone-photo-manager/
 ├── frontend/                # Vanilla HTML/CSS/JS frontend (No framework)
 │   ├── index.html           # Page structure
 │   ├── index.css            # Styles (Dark/Light themes, Mobile queries)
-│   └── js/                  # JS Modules (Virtual scroll, API, etc.)
-├── photos/                  # Photo storage directory (Organized by YYYYMM subfolders)
+│   └── js/                  # JS Modules (Gallery, Lightbox, Virtual scroll, API, etc.)
 ├── data/                    # Runtime data (auto-generated, gitignored)
 │   ├── photos.db            # SQLite database
-│   └── thumbnails/          # Cache for thumbnails and high-res renders
+│   ├── thumbnails/          # Cache for thumbnails and high-res renders
+│   └── translation_cache.json # Location translation cache
+├── scripts/                 # Management & utility scripts
+│   ├── start.sh / start.ps1 # Start server script (Linux/macOS & Windows)
+│   └── stop.sh / stop.ps1   # Stop server script (Linux/macOS & Windows)
+├── tests/                   # Automated unit and integration test suite
 ├── .env                     # Environment variables (do not commit)
 ├── .env.template            # Environment variables template
 ├── requirements.txt         # Python dependencies
-├── stop.sh                  # Script to stop the server
 └── ARCHITECTURE.md          # Architecture and design principles
 ```
 
@@ -104,7 +110,14 @@ For a Google Photos Takeout export, extract all archive parts into the same dire
 Ensure you are in the project root directory (e.g. `iPhone-Photo-Manager`), then run:
 
 ```bash
+# Option 1: Direct command
 uv run --no-project python -m server.app
+
+# Option 2: Using convenience scripts
+# Linux / macOS:
+./scripts/start.sh
+# Windows PowerShell:
+.\scripts\start.ps1
 ```
 
 On the first launch, the server will automatically:
@@ -118,14 +131,19 @@ Once started, open your browser and navigate to: **http://127.0.0.1:8000**
 
 Press `Ctrl+C` in the terminal where the server is running to stop it.
 
-If running in the background (macOS/Linux only):
+If running in the background:
 ```bash
-./stop.sh
+# Linux / macOS:
+./scripts/stop.sh
+
+# Windows PowerShell:
+.\scripts\stop.ps1
 ```
 
 ### 📖 User Guide
 - **Browsing**: Scroll down to load more. Daily headers display your trajectory.
 - **Timeline**: Click a month in the sidebar to filter. Click the arrow to expand and filter by a specific day.
-- **Locations**: Click a country in the sidebar to view all photos from that country, or expand to select a specific city.
-- **High-Res Viewing**: Click a photo to open the modal. Use arrow keys, mouse wheel, or on-screen buttons to navigate. If `LOAD_ORIGINAL_ON_CLICK` is false, click "View Original File" to render and cache the full-quality image.
+- **Locations**: Click a country in the sidebar to view all photos from that country, or expand to select a specific city. The search bar supports bilingual fuzzy searching.
+- **High-Res Viewing**: Click a photo to open the modal. Use arrow keys, mouse wheel, on-screen glassmorphism buttons, or **mobile touch swipe** to navigate. Navigation automatically loads subsequent pages when reaching the end. If `LOAD_ORIGINAL_ON_CLICK` is false, click "View Original File" to render and cache the full-quality image.
+- **Favorites**: Click the star icon on any card or inside the modal to favorite photos; click "⭐ Favorites" in the header to view your starred collection.
 - **Slideshow**: Click the "Slideshow / 幻灯片" button in the top bar to configure and start an automated presentation of your photos and videos. You can also start the slideshow directly from any individual photo's detail view using the inline toggle.

@@ -16,6 +16,9 @@
 
 一款轻量级、本地优先的手机照片网页画廊。支持 HEIC/HEIF、JPEG、PNG、WebP、AVIF、MOV、MP4、3GP、iPhone 实况照片和 Android Motion Photo。Motion Photo 内嵌视频直接从原文件流式读取，不会生成重复视频副本。
 
+- **⭐ 交互式照片收藏**：相册卡片右上角与详情灯箱中一键添加/取消收藏，主页与灯箱双向秒级同步；顶部专属“⭐ 收藏”分类视图，取消收藏时带有平滑优雅的淡出动画。
+- **智能语义分类与精细过滤**：“全部”、“照片”、“视频”、“截图”（智能匹配 iOS/Android 屏幕尺寸及 EXIF/XMP 标记）、“⭐ 收藏”5 组语义分类，并支持中英文双向模糊地点搜索（如直接输入“苏黎世”或“Zurich”、“北京”等）。
+- **流畅全屏照片详情灯箱**：磨砂玻璃悬浮切图控制、键盘左右键、鼠标滚轮、**手机端触控滑动手势**全支持；切换到当前已加载末尾时**自动异步拉取下一页**，支持跨页无缝连续浏览与循环。
 - **沉浸式幻灯片播放：** 高度可配置的自动播放功能，解放双手。可按日期、国家、媒体类型筛选，调整播放速度，并支持等待实况照片和视频播放完毕再自动切换下一张。
 - **Google Photos Takeout 元数据：** 从媒体旁的 Takeout JSON 恢复拍摄时间、GPS、海拔、描述和收藏状态，兼容 supplemental-metadata 及长文件名截断的 sidecar。
 - **玻璃拟态（Glassmorphism）UI：** 现代化、高质感的界面设计，拥有丝滑的微动画和精美的深/浅色双主题。
@@ -41,15 +44,18 @@ iphone-photo-manager/
 ├── frontend/                # 纯 HTML/CSS/JS 前端（无框架）
 │   ├── index.html           # 页面结构
 │   ├── index.css            # 样式（深色/浅色主题、移动端媒体查询）
-│   └── js/                  # 模块化的 JS 逻辑（虚拟滚动、API 等）
-├── photos/                  # 照片存放目录（按 YYYYMM 子文件夹组织）
+│   └── js/                  # 模块化的 JS 逻辑（相册、灯箱、时间线、虚拟滚动等）
 ├── data/                    # 运行时数据（自动生成，已 gitignore）
 │   ├── photos.db            # SQLite 数据库
-│   └── thumbnails/          # 缩略图及高清渲染缓存
+│   ├── thumbnails/          # 缩略图及高清渲染缓存
+│   └── translation_cache.json # 地点多语言翻译缓存
+├── scripts/                 # 服务启停运维脚本
+│   ├── start.sh / start.ps1 # 启动服务脚本（Linux/macOS 及 Windows）
+│   └── stop.sh / stop.ps1   # 停止服务脚本（Linux/macOS 及 Windows）
+├── tests/                   # 自动化单元与集成测试套件
 ├── .env                     # 环境变量配置（不提交）
 ├── .env.template            # 环境变量模板
 ├── requirements.txt         # Python 依赖
-├── stop.sh                  # 停止服务脚本
 └── ARCHITECTURE_zh.md       # 项目架构与原理说明
 ```
 
@@ -100,20 +106,32 @@ copy .env.template .env
 #### 4. 启动服务
 请确保你当前位于项目根目录（例如 `iPhone-Photo-Manager`）下，然后执行：
 ```bash
+# 方式一：直接运行
 uv run --no-project python -m server.app
+
+# 方式二：使用便捷脚本
+# Linux / macOS:
+./scripts/start.sh
+# Windows PowerShell:
+.\scripts\start.ps1
 ```
 启动完成后在浏览器打开：**http://127.0.0.1:8000**
 
 #### 5. 停止服务
 在运行服务的终端中按下 `Ctrl+C` 即可停止服务。
 
-如果是后台运行（仅 macOS/Linux）：
+如果是后台运行：
 ```bash
-./stop.sh
+# Linux / macOS:
+./scripts/stop.sh
+
+# Windows PowerShell:
+.\scripts\stop.ps1
 ```
 
 ### 📖 使用指南
 - **时间筛选**：左侧时间线点击月份快速跳转，点击箭头展开可精确到天。
-- **地点筛选**：点击左侧国家名即可筛选该国所有照片，展开后可精确到城市。
-- **查看大图**：点击缩略图进入大图模式。支持通过键盘左右键、屏幕按钮或鼠标滚轮进行照片切换。如果 `LOAD_ORIGINAL_ON_CLICK` 为 false，可以在大图预览界面底部点击“查看原图”，系统会自动渲染并缓存一张满画质（4K）的高清大图。
+- **地点筛选**：点击左侧国家名即可筛选该国所有照片，展开后可精确到城市；顶部搜索栏支持中英文城市/国家模糊搜索。
+- **查看大图**：点击缩略图进入大图模式。支持屏幕按钮、键盘左右键、鼠标滚轮、**移动端触控滑动**切换。到达末尾自动追加加载下一批。如果 `LOAD_ORIGINAL_ON_CLICK` 为 false，可以在大图预览界面底部点击“查看原图”，系统会自动渲染并缓存一张满画质（4K）的高清大图。
+- **照片收藏**：点击缩略图右上角或大图界面的五角星即可收藏，在顶部点击“⭐ 收藏”即可查看个人专属精选集。
 - **幻灯片播放**：点击顶部导航栏的“幻灯片”按钮即可调出播放设置；在大图浏览界面中，也可以直接开启内联的自动播放开关，立刻开始重温记忆。

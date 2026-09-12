@@ -40,10 +40,3 @@ Thumbs.db
 .agents/
 .gemini/
 
-# === Geocoder cache & offline datasets ===
-cities1000.*
-admin1CodesASCII.txt
-admin2Codes.txt
-
-# === Local helper scripts ===
-stop.ps1
