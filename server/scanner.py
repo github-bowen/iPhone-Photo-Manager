@@ -23,7 +23,7 @@ if hasattr(pillow_heif, "register_avif_opener"):
 
 logger = logging.getLogger(__name__)
 
-SCAN_VERSION = 3
+SCAN_VERSION = 4
 IMAGE_EXTENSIONS = {".heic", ".heif", ".jpg", ".jpeg", ".png", ".webp", ".avif"}
 VIDEO_EXTENSIONS = {".mov", ".mp4", ".3gp"}
 SIDECAR_EXTENSIONS = {".aae"}
@@ -293,29 +293,262 @@ def get_all_files_on_disk(photos_dir: str) -> set[str]:
     return valid_paths
 
 
+def _decode_user_comment(val) -> Optional[str]:
+    """Decode EXIF UserComment tag handling ASCII, UNICODE, or raw bytes."""
+    if not val:
+        return None
+    if isinstance(val, str):
+        return val.strip() if val.strip() else None
+    if isinstance(val, bytes):
+        if val.startswith(b"ASCII\x00\x00\x00"):
+            return val[8:].decode("utf-8", errors="ignore").strip() or None
+        elif val.startswith(b"UNICODE\x00"):
+            raw = val[8:]
+            for enc in ("utf-16", "utf-16-be", "utf-16-le", "utf-8"):
+                try:
+                    s = raw.decode(enc).strip("\x00 \t\r\n")
+                    if s:
+                        return s
+                except UnicodeDecodeError:
+                    continue
+            return None
+        elif val.startswith(b"\x00" * 8):
+            raw = val[8:]
+            for enc in ("utf-8", "utf-16", "gb18030", "latin-1"):
+                try:
+                    s = raw.decode(enc).strip("\x00 \t\r\n")
+                    if s:
+                        return s
+                except (UnicodeDecodeError, Exception):
+                    continue
+            return None
+        else:
+            for enc in ("utf-8", "gb18030", "latin-1"):
+                try:
+                    s = val.decode(enc).strip("\x00 \t\r\n")
+                    if s:
+                        return s
+                except UnicodeDecodeError:
+                    continue
+            return None
+    return None
+
+
+def parse_xmp_metadata(xmp_bytes_or_str) -> dict:
+    """Parse description, favorite, and title from XMP packet (string or bytes)."""
+    meta = {}
+    if not xmp_bytes_or_str:
+        return meta
+    if isinstance(xmp_bytes_or_str, bytes):
+        try:
+            xmp_str = xmp_bytes_or_str.decode("utf-8", errors="ignore")
+        except Exception:
+            return meta
+    else:
+        xmp_str = str(xmp_bytes_or_str)
+
+    start_idx = xmp_str.find("<x:xmpmeta")
+    if start_idx == -1:
+        start_idx = xmp_str.find("<rdf:RDF")
+    if start_idx != -1:
+        end_idx = xmp_str.find("</x:xmpmeta>")
+        if end_idx != -1:
+            xmp_str = xmp_str[start_idx : end_idx + len("</x:xmpmeta>")]
+        else:
+            end_rdf = xmp_str.find("</rdf:RDF>")
+            if end_rdf != -1:
+                xmp_str = xmp_str[start_idx : end_rdf + len("</rdf:RDF>")]
+
+    try:
+        root = ET.fromstring(xmp_str)
+    except ET.ParseError:
+        return meta
+
+    for elem in root.iter():
+        tag = elem.tag
+        if "}" in tag:
+            tag = tag.split("}", 1)[1]
+
+        if tag == "description" and "description" not in meta:
+            li = elem.find(".//{http://www.w3.org/1999/02/22-rdf-syntax-ns#}li")
+            text = li.text if (li is not None and li.text) else elem.text
+            if text and text.strip():
+                meta["description"] = text.strip()
+
+        if tag == "Rating":
+            try:
+                val = float((elem.text or "").strip())
+                if val >= 4.0:
+                    meta["is_favorite"] = 1
+            except (ValueError, AttributeError):
+                pass
+        elif tag == "Favorite":
+            val = (elem.text or "").strip().lower()
+            if val in ("1", "true", "yes"):
+                meta["is_favorite"] = 1
+
+        for attr_k, attr_v in elem.attrib.items():
+            attr_name = attr_k.split("}", 1)[1] if "}" in attr_k else attr_k
+            if attr_name == "Rating":
+                try:
+                    if float(attr_v) >= 4.0:
+                        meta["is_favorite"] = 1
+                except (ValueError, TypeError):
+                    pass
+            elif attr_name == "Favorite":
+                if str(attr_v).strip().lower() in ("1", "true", "yes"):
+                    meta["is_favorite"] = 1
+            elif attr_name == "description" and "description" not in meta:
+                if str(attr_v).strip():
+                    meta["description"] = str(attr_v).strip()
+
+    return meta
+
+
+def _scan_single_file(
+    photos_dir: str,
+    subdir_name: str,
+    fname: str,
+    files_in_dir: set[str],
+    files_by_lower: dict[str, str],
+    takeout_index: dict,
+) -> Optional[dict]:
+    subdir_path = os.path.join(photos_dir, subdir_name)
+    filepath = os.path.join(subdir_path, fname)
+    ext = os.path.splitext(fname)[1].upper()
+    
+    file_type = ext.lstrip(".").upper()
+    if file_type == "JPEG":
+        file_type = "JPG"
+        
+    try:
+        stat = os.stat(filepath)
+    except OSError:
+        return None
+
+    photo_data = {
+        "filepath": os.path.join(subdir_name, fname),
+        "filename": fname,
+        "directory": subdir_name,
+        "file_type": file_type,
+        "file_size": stat.st_size,
+        "scan_version": SCAN_VERSION,
+        "is_live_photo": 0,
+        "live_photo_mov": None,
+        "is_motion_photo": 0,
+        "motion_photo_offset": None,
+        "motion_photo_length": None,
+        "motion_photo_mime": None,
+        "is_screenshot": 0,
+        "is_edited": 0,
+        "original_file": None,
+        "description": None,
+        "is_favorite": 0,
+        "takeout_metadata": 0,
+        "takeout_sidecar": None,
+        "takeout_sidecar_mtime_ns": None,
+    }
+    
+    # Detect edited versions (IMG_E*)
+    if fname.startswith("IMG_E"):
+        photo_data["is_edited"] = 1
+        orig_name = fname.replace("IMG_E", "IMG_", 1)
+        if orig_name in files_in_dir:
+            photo_data["original_file"] = os.path.join(subdir_name, orig_name)
+
+    # Detect Live Photo pairs
+    stem = os.path.splitext(fname)[0]
+    mov_name = files_by_lower.get(f"{stem}.mov".lower())
+    if file_type in ("HEIC", "HEIF", "JPG") and mov_name:
+        photo_data["is_live_photo"] = 1
+        photo_data["live_photo_mov"] = os.path.join(subdir_name, mov_name)
+
+    # Extract metadata
+    if file_type in ("HEIC", "HEIF", "JPG", "PNG", "WEBP", "AVIF"):
+        meta = extract_image_metadata(filepath, file_type)
+        photo_data.update(meta)
+        if file_type in ("JPG", "JPEG"):
+            motion_meta = extract_motion_photo_metadata(filepath)
+            if motion_meta:
+                photo_data.update(motion_meta)
+    elif file_type in ("MOV", "MP4", "3GP"):
+        meta = extract_video_metadata(filepath)
+        photo_data.update(meta)
+    elif file_type == "AAE":
+        meta = extract_aae_metadata(filepath)
+        photo_data.update(meta)
+
+    # Check for adjacent .xmp sidecar (common in iOS / macOS / camera photo exports)
+    xmp_candidates = (f"{fname}.xmp", f"{stem}.xmp")
+    for xmp_cand in xmp_candidates:
+        xmp_real = files_by_lower.get(xmp_cand.lower())
+        if xmp_real:
+            try:
+                with open(os.path.join(subdir_path, xmp_real), "r", encoding="utf-8", errors="ignore") as xf:
+                    xmp_meta = parse_xmp_metadata(xf.read())
+                    if not photo_data.get("description") and xmp_meta.get("description"):
+                        photo_data["description"] = xmp_meta["description"]
+                    if xmp_meta.get("is_favorite"):
+                        photo_data["is_favorite"] = 1
+            except OSError:
+                pass
+            break
+
+    # Detect screenshots
+    path_parts = {part.lower() for part in subdir_name.split(os.sep)}
+    name_lower = fname.lower()
+    if (
+        "screenshots" in path_parts
+        or "screenshot" in name_lower
+        or name_lower.startswith(("screencap", "screen_shot", "screen-shot"))
+    ):
+        photo_data["is_screenshot"] = 1
+    elif file_type == "PNG" and photo_data.get("width") and photo_data.get("height"):
+        w, h = photo_data["width"], photo_data["height"]
+        if (w, h) in ((1179, 2556), (2556, 1179), (1170, 2532), (2532, 1170),
+                      (1284, 2778), (2778, 1284), (1290, 2796), (2796, 1290)):
+            photo_data["is_screenshot"] = 1
+
+    # Check Google Photos Takeout sidecars
+    if ext.lower() in IMAGE_EXTENSIONS | VIDEO_EXTENSIONS:
+        takeout_record = _find_takeout_sidecar(fname, takeout_index)
+        if takeout_record is not None:
+            sidecar_name, takeout_data, mtime_ns = takeout_record
+            takeout_meta = extract_takeout_metadata(takeout_data)
+            if (
+                photo_data.get("taken_at")
+                and not photo_data["taken_at"].endswith("-99T23:59:59")
+                and not takeout_data.get("photoTakenTime")
+            ):
+                takeout_meta.pop("taken_at", None)
+                takeout_meta.pop("timezone", None)
+            photo_data.update(takeout_meta)
+            photo_data["takeout_metadata"] = 1
+            photo_data["takeout_sidecar"] = os.path.join(subdir_name, sidecar_name)
+            photo_data["takeout_sidecar_mtime_ns"] = mtime_ns
+
+    return photo_data
+
+
 def scan_specific_files(
     photos_dir: str,
     target_paths: set[str],
     takeout_indexes: Optional[dict[str, dict]] = None,
 ) -> list[dict]:
-    """Extract metadata only for the specifically requested paths."""
-    results = []
+    """Extract metadata only for the specifically requested paths in parallel."""
     photos_dir = os.path.realpath(photos_dir)
     
-    # Group target_paths by directory
     dir_to_files = {}
     for rel_path in target_paths:
         subdir_name, fname = os.path.split(rel_path)
-        if subdir_name not in dir_to_files:
-            dir_to_files[subdir_name] = []
-        dir_to_files[subdir_name].append(fname)
+        dir_to_files.setdefault(subdir_name, []).append(fname)
         
+    tasks = []
     for subdir_name, new_fnames in dir_to_files.items():
         subdir_path = os.path.join(photos_dir, subdir_name)
         if not os.path.isdir(subdir_path):
             continue
             
-        # Get full list of files in this directory to handle pairings (e.g. .MOV exists)
         files_in_dir = set(os.listdir(subdir_path))
         files_by_lower = {name.lower(): name for name in files_in_dir}
         takeout_index = (
@@ -327,101 +560,19 @@ def scan_specific_files(
             takeout_index = {"by_name": {}, "by_title": {}}
         
         for fname in new_fnames:
-            filepath = os.path.join(subdir_path, fname)
-            ext = os.path.splitext(fname)[1].upper()
-            
-            file_type = ext.lstrip(".").upper()
-            if file_type == "JPEG":
-                file_type = "JPG"
-                
-            stat = os.stat(filepath)
-            photo_data = {
-                "filepath": os.path.join(subdir_name, fname),
-                "filename": fname,
-                "directory": subdir_name,
-                "file_type": file_type,
-                "file_size": stat.st_size,
-                "scan_version": SCAN_VERSION,
-                "is_live_photo": 0,
-                "live_photo_mov": None,
-                "is_motion_photo": 0,
-                "motion_photo_offset": None,
-                "motion_photo_length": None,
-                "motion_photo_mime": None,
-                "is_screenshot": 0,
-                "is_edited": 0,
-                "original_file": None,
-                "description": None,
-                "is_favorite": 0,
-                "takeout_metadata": 0,
-                "takeout_sidecar": None,
-                "takeout_sidecar_mtime_ns": None,
-            }
-            
-            # Detect edited versions (IMG_E*)
-            if fname.startswith("IMG_E"):
-                photo_data["is_edited"] = 1
-                orig_name = fname.replace("IMG_E", "IMG_", 1)
-                if orig_name in files_in_dir:
-                    photo_data["original_file"] = os.path.join(subdir_name, orig_name)
+            tasks.append((photos_dir, subdir_name, fname, files_in_dir, files_by_lower, takeout_index))
 
-            # Detect Live Photo pairs
-            stem = os.path.splitext(fname)[0]
-            mov_name = files_by_lower.get(f"{stem}.mov".lower())
-            if file_type in ("HEIC", "HEIF") and mov_name:
-                photo_data["is_live_photo"] = 1
-                photo_data["live_photo_mov"] = os.path.join(subdir_name, mov_name)
-
-            # Extract metadata
-            if file_type in ("HEIC", "HEIF", "JPG", "PNG", "WEBP", "AVIF"):
-                meta = extract_image_metadata(filepath, file_type)
-                photo_data.update(meta)
-                motion_meta = extract_motion_photo_metadata(filepath)
-                if motion_meta:
-                    photo_data.update(motion_meta)
-            elif file_type in ("MOV", "MP4", "3GP"):
-                meta = extract_video_metadata(filepath)
-                photo_data.update(meta)
-            elif file_type == "AAE":
-                meta = extract_aae_metadata(filepath)
-                photo_data.update(meta)
-
-            # Detect screenshots
-            path_parts = {part.lower() for part in subdir_name.split(os.sep)}
-            name_lower = fname.lower()
-            if (
-                "screenshots" in path_parts
-                or "screenshot" in name_lower
-                or name_lower.startswith(("screencap", "screen_shot", "screen-shot"))
-            ):
-                photo_data["is_screenshot"] = 1
-            elif file_type == "PNG" and photo_data.get("width") and photo_data.get("height"):
-                w, h = photo_data["width"], photo_data["height"]
-                # Common iPhone screenshot sizes
-                if (w, h) in ((1179, 2556), (2556, 1179), (1170, 2532), (2532, 1170),
-                              (1284, 2778), (2778, 1284), (1290, 2796), (2796, 1290)):
-                    photo_data["is_screenshot"] = 1
-
-            if ext.lower() in IMAGE_EXTENSIONS | VIDEO_EXTENSIONS:
-                takeout_record = _find_takeout_sidecar(fname, takeout_index)
-                if takeout_record is not None:
-                    sidecar_name, takeout_data, mtime_ns = takeout_record
-                    takeout_meta = extract_takeout_metadata(takeout_data)
-                    # If camera EXIF already provided a valid non-undetermined taken_at,
-                    # and takeout only has creationTime (not photoTakenTime), don't overwrite with upload time.
-                    if (
-                        photo_data.get("taken_at")
-                        and not photo_data["taken_at"].endswith("-99T23:59:59")
-                        and not takeout_data.get("photoTakenTime")
-                    ):
-                        takeout_meta.pop("taken_at", None)
-                        takeout_meta.pop("timezone", None)
-                    photo_data.update(takeout_meta)
-                    photo_data["takeout_metadata"] = 1
-                    photo_data["takeout_sidecar"] = os.path.join(subdir_name, sidecar_name)
-                    photo_data["takeout_sidecar_mtime_ns"] = mtime_ns
-
-            results.append(photo_data)
+    results = []
+    if len(tasks) > 1:
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            for item in executor.map(lambda args: _scan_single_file(*args), tasks):
+                if item is not None:
+                    results.append(item)
+    elif tasks:
+        item = _scan_single_file(*tasks[0])
+        if item is not None:
+            results.append(item)
 
     return results
 
@@ -445,6 +596,16 @@ def extract_image_metadata(filepath: str, file_type: str) -> dict:
             # Basic IFD0 tags
             meta["camera_make"] = exif.get(271)  # Make
             meta["camera_model"] = exif.get(272)  # Model
+
+            # ImageDescription (Tag 270)
+            desc = exif.get(270)
+            if isinstance(desc, bytes):
+                try:
+                    desc = desc.decode("utf-8", errors="ignore")
+                except Exception:
+                    desc = None
+            if isinstance(desc, str) and desc.strip():
+                meta["description"] = desc.strip()
 
             # EXIF IFD
             from PIL.ExifTags import IFD
@@ -472,6 +633,13 @@ def extract_image_metadata(filepath: str, file_type: str) -> dict:
                 if lens:
                     meta["lens_model"] = lens
 
+                # UserComment (Tag 37510)
+                if "description" not in meta:
+                    comment = exif_ifd.get(37510)
+                    parsed_comment = _decode_user_comment(comment)
+                    if parsed_comment:
+                        meta["description"] = parsed_comment
+
             # GPS IFD
             gps_ifd = exif.get_ifd(IFD.GPSInfo)
             if gps_ifd:
@@ -488,6 +656,25 @@ def extract_image_metadata(filepath: str, file_type: str) -> dict:
                         meta["altitude"] = float(alt)
                     except (TypeError, ValueError):
                         pass
+
+        # Extract embedded XMP if available
+        xmp_data = None
+        if "xmp" in getattr(img, "info", {}):
+            xmp_data = img.info["xmp"]
+        elif hasattr(img, "applist"):
+            for app, data in getattr(img, "applist", []):
+                if app == "APP1" and data.startswith(b"http://ns.adobe.com/xap/1.0/\x00"):
+                    xmp_data = data[len(b"http://ns.adobe.com/xap/1.0/\x00") :]
+                    break
+        elif "XML:com.adobe.xmp" in getattr(img, "text", {}):
+            xmp_data = img.text["XML:com.adobe.xmp"]
+
+        if xmp_data:
+            xmp_meta = parse_xmp_metadata(xmp_data)
+            if "description" not in meta and xmp_meta.get("description"):
+                meta["description"] = xmp_meta["description"]
+            if xmp_meta.get("is_favorite"):
+                meta["is_favorite"] = 1
 
         img.close()
     except Exception as e:
