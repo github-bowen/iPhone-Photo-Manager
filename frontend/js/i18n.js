@@ -1,4 +1,4 @@
-import { state } from './state.js?v=12';
+import { state } from './state.js?v=13';
 
 export const i18n = {
   en: {
@@ -14,6 +14,7 @@ export const i18n = {
     filter_photos: "Photos",
     filter_videos: "Videos",
     filter_screenshots: "Screenshots",
+    filter_favorites: "Favorites",
     date_from: "From date",
     date_to: "To date",
     load_more: "Load More",
@@ -100,6 +101,7 @@ export const i18n = {
     filter_photos: "照片",
     filter_videos: "视频",
     filter_screenshots: "截图",
+    filter_favorites: "⭐ 收藏",
     date_from: "开始日期",
     date_to: "结束日期",
     load_more: "加载更多",

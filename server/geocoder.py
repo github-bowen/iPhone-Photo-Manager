@@ -46,7 +46,50 @@ def batch_reverse_geocode(coordinates: list[tuple[float, float]]) -> list[Option
         # reverse_geocoder is incredibly fast and takes a list of tuples
         results = rg.search(to_geocode)
         
+        # Concurrently fetch BDC for CN coords to avoid sequential network delays
+        cn_coords = [ck for ck, res in zip(to_geocode, results) if res.get('cc') == 'CN']
+        bdc_results = {}
+        if cn_coords:
+            import requests
+            session = requests.Session()
+
+            def fetch_bdc(ck):
+                try:
+                    url = f"https://api.bigdatacloud.net/data/reverse-geocode-client?latitude={ck[0]}&longitude={ck[1]}&localityLanguage=zh"
+                    resp = session.get(url, timeout=3)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        c_name = data.get("countryName", "中国")
+                        if c_name == "中华人民共和国":
+                            c_name = "中国"
+                        p_sub = data.get("principalSubdivision", "")
+                        city_name = data.get("city", "")
+                        c_parts = []
+                        if city_name:
+                            c_parts.append(city_name)
+                        if p_sub and p_sub != city_name:
+                            c_parts.append(p_sub)
+                        if c_name:
+                            c_parts.append(c_name)
+                        if c_parts:
+                            return ck, ", ".join(c_parts)
+                except Exception:
+                    pass
+                return ck, None
+
+            from concurrent.futures import ThreadPoolExecutor
+            with ThreadPoolExecutor(max_workers=20) as executor:
+                for ck, loc in executor.map(fetch_bdc, cn_coords):
+                    if loc:
+                        bdc_results[ck] = loc
+            session.close()
+
         for coord_key, res in zip(to_geocode, results):
+            if coord_key in bdc_results:
+                loc_str = bdc_results[coord_key]
+                _geocode_cache[coord_key] = loc_str
+                continue
+
             name = res.get('name', '')
             admin1 = res.get('admin1', '')
             admin2 = res.get('admin2', '')
@@ -55,35 +98,6 @@ def batch_reverse_geocode(coordinates: list[tuple[float, float]]) -> list[Option
             # Map country code to full country name
             country = cc
             if cc:
-                if cc == 'CN':
-                    import requests
-                    try:
-                        url = f"https://api.bigdatacloud.net/data/reverse-geocode-client?latitude={coord_key[0]}&longitude={coord_key[1]}&localityLanguage=zh"
-                        resp = requests.get(url, timeout=5)
-                        if resp.status_code == 200:
-                            data = resp.json()
-                            c_name = data.get("countryName", "中国")
-                            if c_name == "中华人民共和国":
-                                c_name = "中国"
-                            p_sub = data.get("principalSubdivision", "")
-                            city_name = data.get("city", "")
-                            
-                            c_parts = []
-                            if city_name:
-                                c_parts.append(city_name)
-                            if p_sub and p_sub != city_name:
-                                c_parts.append(p_sub)
-                            if c_name:
-                                c_parts.append(c_name)
-                                
-                            if c_parts:
-                                loc_str = ", ".join(c_parts)
-                                _geocode_cache[coord_key] = loc_str
-                                logger.info("BDC Geocoded %s -> %s", coord_key, loc_str)
-                                continue
-                    except Exception as e:
-                        logger.error("BDC geocode failed for %s: %s", coord_key, e)
-
                 try:
                     c = pycountry.countries.get(alpha_2=cc)
                     if c:
@@ -104,7 +118,6 @@ def batch_reverse_geocode(coordinates: list[tuple[float, float]]) -> list[Option
                 
             loc_str = ", ".join(parts)
             _geocode_cache[coord_key] = loc_str
-            logger.info("Geocoded %s -> %s", coord_key, loc_str)
 
     # Map back to original list
     for coord_key in coord_keys:

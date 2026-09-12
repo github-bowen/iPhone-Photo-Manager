@@ -351,7 +351,6 @@ def scan_specific_files(
                 "is_screenshot": 0,
                 "is_edited": 0,
                 "original_file": None,
-                "location_name": None,
                 "description": None,
                 "is_favorite": 0,
                 "takeout_metadata": 0,
@@ -407,7 +406,17 @@ def scan_specific_files(
                 takeout_record = _find_takeout_sidecar(fname, takeout_index)
                 if takeout_record is not None:
                     sidecar_name, takeout_data, mtime_ns = takeout_record
-                    photo_data.update(extract_takeout_metadata(takeout_data))
+                    takeout_meta = extract_takeout_metadata(takeout_data)
+                    # If camera EXIF already provided a valid non-undetermined taken_at,
+                    # and takeout only has creationTime (not photoTakenTime), don't overwrite with upload time.
+                    if (
+                        photo_data.get("taken_at")
+                        and not photo_data["taken_at"].endswith("-99T23:59:59")
+                        and not takeout_data.get("photoTakenTime")
+                    ):
+                        takeout_meta.pop("taken_at", None)
+                        takeout_meta.pop("timezone", None)
+                    photo_data.update(takeout_meta)
                     photo_data["takeout_metadata"] = 1
                     photo_data["takeout_sidecar"] = os.path.join(subdir_name, sidecar_name)
                     photo_data["takeout_sidecar_mtime_ns"] = mtime_ns

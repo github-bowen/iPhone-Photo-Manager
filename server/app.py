@@ -195,8 +195,11 @@ async def _run_full_scan():
         new_paths = disk_paths - existing_paths
         stale_paths = await get_filepaths_below_scan_version(db, SCAN_VERSION)
         stored_sidecars = await get_takeout_sidecar_state(db)
+        takeout_indexes = await asyncio.to_thread(
+            build_takeout_sidecar_indexes, PHOTOS_DIR, disk_paths
+        )
         current_sidecars = await asyncio.to_thread(
-            get_takeout_sidecar_state_on_disk, PHOTOS_DIR, disk_paths
+            get_takeout_sidecar_state_on_disk, PHOTOS_DIR, disk_paths, takeout_indexes
         )
         sidecar_changed_paths = {
             path for path in disk_paths
@@ -220,9 +223,6 @@ async def _run_full_scan():
         # Process new files
         if scan_paths:
             logger.info("Indexing metadata for %d files in batches...", len(scan_paths))
-            takeout_indexes = await asyncio.to_thread(
-                build_takeout_sidecar_indexes, PHOTOS_DIR, scan_paths
-            )
             new_paths_list = list(scan_paths)
             batch_size = 100
             for i in range(0, len(new_paths_list), batch_size):
@@ -340,12 +340,13 @@ async def _geocode_all_photos():
     coords = [(p["latitude"], p["longitude"]) for p in photos]
     locations = await asyncio.to_thread(batch_reverse_geocode, coords)
 
-    for photo, location in zip(photos, locations):
-        if location:
-            await update_photo(db, photo["id"], {"location_name": location})
+    updates = [(location, photo["id"]) for photo, location in zip(photos, locations) if location]
+    if updates:
+        await db.executemany("UPDATE photos SET location_name = ? WHERE id = ?", updates)
+        await db.commit()
 
     await db.close()
-    logger.info("Geocoding complete: %d locations resolved.", sum(1 for l in locations if l))
+    logger.info("Geocoding complete: %d locations resolved.", len(updates))
 
 
 # --- API Endpoints ---
@@ -361,6 +362,7 @@ async def api_get_photos(
     date_from: Optional[str] = Query(None),
     date_to: Optional[str] = Query(None),
     screenshots: Optional[bool] = Query(None),
+    favorites: Optional[bool] = Query(None),
     lang: Optional[str] = Query(None),
     sort_order: Optional[str] = Query("desc"),
 ):
@@ -378,6 +380,7 @@ async def api_get_photos(
             date_from=date_from,
             date_to=date_to,
             is_screenshot=screenshots,
+            is_favorite=favorites,
             sort_order=sort_order,
         )
         target_lang = lang if lang else os.getenv("APP_LANGUAGE", "zh")

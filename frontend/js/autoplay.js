@@ -1,8 +1,8 @@
-import { state } from './state.js?v=12';
-import { $ } from './utils.js?v=12';
-import { resetAndReload, loadPhotos } from './gallery.js?v=12';
-import { openModal, closeModal, renderModalContent } from './modal.js?v=12';
-import { t } from './i18n.js?v=12';
+import { state } from './state.js?v=13';
+import { $ } from './utils.js?v=13';
+import { resetAndReload, loadPhotos } from './gallery.js?v=13';
+import { openModal, closeModal, renderModalContent } from './modal.js?v=13';
+import { t } from './i18n.js?v=13';
 
 let autoplayTimer = null;
 export let isAutoplaying = false;

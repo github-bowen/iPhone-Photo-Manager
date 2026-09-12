@@ -117,9 +117,18 @@ async def upsert_photo(db: aiosqlite.Connection, photo_data: dict) -> Optional[i
     """Insert a photo or refresh scanner-owned metadata for an existing path."""
     columns = list(photo_data.keys())
     placeholders = ", ".join(["?"] * len(columns))
-    updates = ", ".join(
-        f"{column} = excluded.{column}" for column in columns if column != "filepath"
-    )
+    update_clauses = [
+        f"{column} = excluded.{column}"
+        for column in columns
+        if column not in ("filepath", "location_name")
+    ]
+    if "latitude" in columns and "longitude" in columns:
+        update_clauses.append(
+            "location_name = CASE "
+            "WHEN excluded.latitude IS photos.latitude AND excluded.longitude IS photos.longitude THEN photos.location_name "
+            "ELSE NULL END"
+        )
+    updates = ", ".join(update_clauses)
     cursor = await db.execute(
         f"INSERT INTO photos ({', '.join(columns)}) VALUES ({placeholders}) "
         f"ON CONFLICT(filepath) DO UPDATE SET {updates}",
@@ -180,6 +189,7 @@ async def get_photos(
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
     is_screenshot: Optional[bool] = None,
+    is_favorite: Optional[bool] = None,
     sort_order: str = "desc",
 ) -> tuple[list[dict], int]:
     """Get paginated photos with optional filters. Returns (photos, total_count)."""
@@ -251,6 +261,10 @@ async def get_photos(
     if is_screenshot is not None:
         conditions.append("is_screenshot = ?")
         params.append(1 if is_screenshot else 0)
+
+    if is_favorite is not None:
+        conditions.append("is_favorite = ?")
+        params.append(1 if is_favorite else 0)
 
     where = " AND ".join(conditions)
 

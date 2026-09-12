@@ -1,8 +1,8 @@
-import { state } from './state.js?v=12';
-import { api } from './api.js?v=12';
-import { t } from './i18n.js?v=12';
-import { $, formatDateLabel, formatDuration, createEmptyState } from './utils.js?v=12';
-import { openModal } from './modal.js?v=12';
+import { state } from './state.js?v=13';
+import { api } from './api.js?v=13';
+import { t } from './i18n.js?v=13';
+import { $, formatDateLabel, formatDuration, createEmptyState } from './utils.js?v=13';
+import { openModal } from './modal.js?v=13';
 
 let galleryObserver = null;
 const VIDEO_TYPES = new Set(["MOV", "MP4", "3GP"]);
@@ -268,7 +268,9 @@ export async function loadPhotos(append) {
   params.set("per_page", state.perPage.toString());
 
   if (state.activeFilter !== "all") {
-    if (state.activeFilter === "PNG") {
+    if (state.activeFilter === "favorites") {
+      params.set("favorites", "true");
+    } else if (state.activeFilter === "PNG") {
       params.set("screenshots", "true");
     } else {
       params.set("file_type", state.activeFilter);
