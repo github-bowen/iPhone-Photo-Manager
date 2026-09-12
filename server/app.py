@@ -223,15 +223,16 @@ async def _run_full_scan():
         # Process new files
         if scan_paths:
             logger.info("Indexing metadata for %d files in batches...", len(scan_paths))
-            new_paths_list = list(scan_paths)
-            batch_size = 100
+            new_paths_list = sorted(scan_paths)
+            batch_size = 250
             for i in range(0, len(new_paths_list), batch_size):
                 batch = set(new_paths_list[i:i + batch_size])
                 new_files_data = await asyncio.to_thread(
                     scan_specific_files, PHOTOS_DIR, batch, takeout_indexes
                 )
                 for photo_data in new_files_data:
-                    await upsert_photo(db, photo_data)
+                    await upsert_photo(db, photo_data, commit=False)
+                await db.commit()
                 
                 scan_state["progress"] += len(batch)
                 logger.info("Imported %d / %d new files", min(i + batch_size, len(new_paths_list)), len(new_paths_list))
