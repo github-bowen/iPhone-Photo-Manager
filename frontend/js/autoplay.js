@@ -110,11 +110,11 @@ function openAutoplayConfig() {
 
   // Pre-fill type based on current active filter
   const isAll = state.activeFilter === "all";
-  const photoTypes = ["HEIC", "HEIF", "JPG", "WEBP", "AVIF"];
-  const videoTypes = ["MOV", "MP4", "3GP"];
-  $('autoplay-type-photo').checked = isAll || photoTypes.some(type => state.activeFilter.includes(type));
-  $('autoplay-type-video').checked = isAll || videoTypes.some(type => state.activeFilter.includes(type));
-  $('autoplay-type-screenshot').checked = isAll || state.activeFilter.includes("PNG") || state.activeFilter === "PNG";
+  const photoTypes = ["HEIC", "HEIF", "JPG", "WEBP", "AVIF", "photos"];
+  const videoTypes = ["MOV", "MP4", "3GP", "videos"];
+  $('autoplay-type-photo').checked = isAll || state.activeFilter === "photos" || photoTypes.some(type => state.activeFilter.includes(type));
+  $('autoplay-type-video').checked = isAll || state.activeFilter === "videos" || videoTypes.some(type => state.activeFilter.includes(type));
+  $('autoplay-type-screenshot').checked = isAll || state.activeFilter === "screenshots" || state.activeFilter.includes("PNG") || state.activeFilter === "PNG";
 
   // Pre-fill sort order
   const sortOrderDesc = $('autoplay-sort-desc');
@@ -162,19 +162,20 @@ async function startAutoplay() {
     state.sortOrder = "asc";
   }
   
-  let types = [];
-  if (wantsPhoto) types.push("HEIC", "HEIF", "JPG", "WEBP", "AVIF");
-  if (wantsVideo) types.push("MOV", "MP4", "3GP");
-  if (wantsScreenshot) types.push("PNG");
-  
-  if (types.length === 0) types = ["NONE"]; // if user unchecked all
-  
-  // Instead of 'all', we construct a comma-separated list
   if (wantsPhoto && wantsVideo && wantsScreenshot) {
      state.activeFilter = "all";
-  } else if (types.includes("PNG") && types.length === 1) {
-     state.activeFilter = "PNG"; // The screenshot logic checks for "PNG" specifically
+  } else if (wantsPhoto && !wantsVideo && !wantsScreenshot) {
+     state.activeFilter = "photos";
+  } else if (wantsVideo && !wantsPhoto && !wantsScreenshot) {
+     state.activeFilter = "videos";
+  } else if (wantsScreenshot && !wantsPhoto && !wantsVideo) {
+     state.activeFilter = "screenshots";
   } else {
+     let types = [];
+     if (wantsPhoto) types.push("photos");
+     if (wantsVideo) types.push("videos");
+     if (wantsScreenshot) types.push("screenshots");
+     if (types.length === 0) types = ["NONE"];
      state.activeFilter = types.join(",");
   }
   

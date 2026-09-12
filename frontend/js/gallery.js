@@ -275,8 +275,18 @@ export async function loadPhotos(append) {
   if (state.activeFilter !== "all") {
     if (state.activeFilter === "favorites") {
       params.set("favorites", "true");
-    } else if (state.activeFilter === "PNG") {
+    } else if (state.activeFilter === "photos") {
+      params.set("category", "photos");
+    } else if (state.activeFilter === "videos") {
+      params.set("category", "videos");
+    } else if (state.activeFilter === "screenshots" || state.activeFilter === "PNG") {
       params.set("screenshots", "true");
+    } else if (
+      state.activeFilter.includes("photos") ||
+      state.activeFilter.includes("videos") ||
+      state.activeFilter.includes("screenshots")
+    ) {
+      params.set("category", state.activeFilter);
     } else {
       params.set("file_type", state.activeFilter);
     }
