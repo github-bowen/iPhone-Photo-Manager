@@ -380,8 +380,15 @@ async def api_get_photos(
     country = country if isinstance(country, str) else None
     date_from = date_from if isinstance(date_from, str) else None
     date_to = date_to if isinstance(date_to, str) else None
-    screenshots = screenshots if isinstance(screenshots, bool) else None
-    favorites = favorites if isinstance(favorites, bool) else None
+    if isinstance(screenshots, str):
+        screenshots = screenshots.lower() in ("true", "1", "yes")
+    elif not isinstance(screenshots, bool):
+        screenshots = None
+
+    if isinstance(favorites, str):
+        favorites = favorites.lower() in ("true", "1", "yes")
+    elif not isinstance(favorites, bool):
+        favorites = None
     lang = lang if isinstance(lang, str) else None
     sort_order = sort_order if isinstance(sort_order, str) else "desc"
 

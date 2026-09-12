@@ -1,8 +1,8 @@
-import { state } from './state.js?v=13';
-import { api } from './api.js?v=13';
-import { t } from './i18n.js?v=13';
-import { formatMonthLabel } from './utils.js?v=13';
-import { renderGallery, resetAndReload } from './gallery.js?v=13';
+import { state } from './state.js';
+import { api } from './api.js';
+import { t } from './i18n.js';
+import { formatMonthLabel } from './utils.js';
+import { renderGallery, resetAndReload } from './gallery.js';
 
 const sidebarTimeline = document.getElementById("sidebar-timeline");
 const sidebarLocations = document.getElementById("sidebar-locations");

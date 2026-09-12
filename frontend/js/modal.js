@@ -1,8 +1,8 @@
-import { state } from './state.js?v=13';
-import { api } from './api.js?v=13';
-import { t } from './i18n.js?v=13';
-import { $, formatDate, formatTime, formatFileSize, formatDuration } from './utils.js?v=13';
-import { isAutoplaying, startAutoplayFromCurrent, stopAutoplay } from './autoplay.js?v=13';
+import { state } from './state.js';
+import { api } from './api.js';
+import { t } from './i18n.js';
+import { $, formatDate, formatTime, formatFileSize, formatDuration } from './utils.js';
+import { isAutoplaying, startAutoplayFromCurrent, stopAutoplay } from './autoplay.js';
 
 const VIDEO_TYPES = new Set(["MOV", "MP4", "3GP"]);
 

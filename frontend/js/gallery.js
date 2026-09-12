@@ -1,8 +1,8 @@
-import { state } from './state.js?v=13';
-import { api } from './api.js?v=13';
-import { t } from './i18n.js?v=13';
-import { $, formatDateLabel, formatDuration, createEmptyState } from './utils.js?v=13';
-import { openModal } from './modal.js?v=13';
+import { state } from './state.js';
+import { api } from './api.js';
+import { t } from './i18n.js';
+import { $, formatDateLabel, formatDuration, createEmptyState } from './utils.js';
+import { openModal } from './modal.js';
 
 let galleryObserver = null;
 const VIDEO_TYPES = new Set(["MOV", "MP4", "3GP"]);
@@ -170,7 +170,10 @@ export function renderGallery(append) {
   }
 
   if (state.photos.length === 0) {
-    const emptyEl = createEmptyState("📷", t("no_photos"), t("adjust_filters"));
+    const isFav = state.activeFilter === "favorites";
+    const emptyEl = isFav
+      ? createEmptyState("⭐", t("no_favorites"), t("no_favorites_hint"))
+      : createEmptyState("📷", t("no_photos"), t("adjust_filters"));
     gallery.appendChild(emptyEl);
     return;
   }
@@ -275,6 +278,7 @@ export async function loadPhotos(append) {
   if (state.activeFilter !== "all") {
     if (state.activeFilter === "favorites") {
       params.set("favorites", "true");
+      params.set("category", "favorites");
     } else if (state.activeFilter === "photos") {
       params.set("category", "photos");
     } else if (state.activeFilter === "videos") {

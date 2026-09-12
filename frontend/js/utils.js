@@ -1,5 +1,5 @@
-import { state } from './state.js?v=13';
-import { t } from './i18n.js?v=13';
+import { state } from './state.js';
+import { t } from './i18n.js';
 
 export const $ = (id) => document.getElementById(id);
 

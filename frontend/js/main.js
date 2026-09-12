@@ -1,11 +1,11 @@
-import { state } from './state.js?v=15';
-import { api } from './api.js?v=15';
-import { applyTranslations } from './i18n.js?v=15';
-import { updateStats } from './utils.js?v=15';
-import { loadPhotos, resetAndReload, setupInfiniteScroll } from './gallery.js?v=15';
-import { loadTimeline, loadLocations, closeMobileSidebar, resetSidebarTimer } from './sidebar.js?v=15';
-import { closeModal, renderModalContent } from './modal.js?v=15';
-import { initAutoplay } from './autoplay.js?v=15';
+import { state } from './state.js';
+import { api } from './api.js';
+import { applyTranslations } from './i18n.js';
+import { updateStats } from './utils.js';
+import { loadPhotos, resetAndReload, setupInfiniteScroll } from './gallery.js';
+import { loadTimeline, loadLocations, closeMobileSidebar, resetSidebarTimer } from './sidebar.js';
+import { closeModal, renderModalContent } from './modal.js';
+import { initAutoplay } from './autoplay.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -69,9 +69,8 @@ async function checkScanStatus() {
 }
 
 function setupFilters() {
-  const filterBtns = document.querySelectorAll(".filter-btn");
+  const filterBtns = document.querySelectorAll(".filter-group .filter-btn");
   filterBtns.forEach(function (btn) {
-    if (btn.closest('#modal-info')) return; // Ignore buttons dynamically generated in modal
     btn.addEventListener("click", function () {
       document.querySelectorAll(".filter-group .filter-btn").forEach(b => b.classList.remove("active"));
       this.classList.add("active");
