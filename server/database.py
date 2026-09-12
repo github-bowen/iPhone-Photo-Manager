@@ -5,7 +5,7 @@ Manages SQLite database for photo metadata storage and retrieval.
 
 import aiosqlite
 import os
-from typing import Optional
+from typing import Optional, Union
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -186,7 +186,7 @@ async def get_photos(
     page: int = 1,
     per_page: int = 50,
     file_type: Optional[str] = None,
-    location_name: Optional[str] = None,
+    location_name: Optional[Union[str, list[str]]] = None,
     city: Optional[str] = None,
     country: Optional[str] = None,
     date_from: Optional[str] = None,
@@ -238,8 +238,29 @@ async def get_photos(
             params.extend(types)
 
     if location_name:
-        conditions.append("location_name = ?")
-        params.append(location_name)
+        if isinstance(location_name, str):
+            loc_list = [l.strip() for l in location_name.split(",") if l.strip()]
+        else:
+            loc_list = [l.strip() for l in location_name if l and l.strip()]
+
+        if loc_list:
+            loc_conds = []
+            exact_matches = []
+            like_matches = []
+            for loc in loc_list:
+                if len(loc) > 15:
+                    exact_matches.append(loc)
+                else:
+                    like_matches.append(loc)
+            if exact_matches:
+                placeholders = ",".join(["?"] * len(exact_matches))
+                loc_conds.append(f"location_name IN ({placeholders})")
+                params.extend(exact_matches)
+            for loc in like_matches:
+                loc_conds.append("location_name LIKE ?")
+                params.append(f"%{loc}%")
+            if loc_conds:
+                conditions.append("(" + " OR ".join(loc_conds) + ")")
 
     if city:
         cq = "Zuerich" if city == "Zurich" else city

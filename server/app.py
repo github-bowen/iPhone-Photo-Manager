@@ -394,13 +394,23 @@ async def api_get_photos(
 
     db = await get_db()
     try:
+        loc_param = None
+        if location:
+            loc_candidates = [location]
+            loc_lower = location.lower()
+            for (orig, lang_code), translated in _translation_cache.items():
+                if loc_lower in translated.lower() or loc_lower in orig.lower():
+                    if orig not in loc_candidates:
+                        loc_candidates.append(orig)
+            loc_param = loc_candidates
+
         photos, total = await get_photos(
             db,
             page=page,
             per_page=per_page,
             file_type=file_type,
             category=category,
-            location_name=location,
+            location_name=loc_param,
             city=city,
             country=country,
             date_from=date_from,

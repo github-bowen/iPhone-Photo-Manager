@@ -3,6 +3,7 @@ import { api } from './api.js';
 import { t } from './i18n.js';
 import { $, formatDate, formatTime, formatFileSize, formatDuration } from './utils.js';
 import { isAutoplaying, startAutoplayFromCurrent, stopAutoplay } from './autoplay.js';
+import { loadPhotos } from './gallery.js';
 
 const VIDEO_TYPES = new Set(["MOV", "MP4", "3GP"]);
 
@@ -26,10 +27,10 @@ export function closeModal() {
   modalBackdrop.classList.remove("active");
   document.body.style.overflow = "";
 
-  const existing = modalImageContainer.querySelectorAll("img, video");
+  const existing = modalImageContainer.querySelectorAll(".modal-media, img, video");
   existing.forEach(function (el) {
     if (el.tagName === "VIDEO") el.pause();
-    if (el.classList.contains("modal-media")) el.remove();
+    el.remove();
   });
 
   // Rescue toolbar before clearing info
@@ -39,6 +40,35 @@ export function closeModal() {
   }
 
   modalInfo.replaceChildren();
+}
+
+export async function nextModalPhoto() {
+  if (!state.photos || state.photos.length === 0) return;
+  if (state.modalPhotoIndex < state.photos.length - 1) {
+    state.modalPhotoIndex++;
+    renderModalContent();
+  } else if (state.currentPage < state.totalPages) {
+    state.currentPage++;
+    await loadPhotos(true);
+    if (state.modalPhotoIndex < state.photos.length - 1) {
+      state.modalPhotoIndex++;
+      renderModalContent();
+    }
+  } else if (state.photos.length > 1) {
+    state.modalPhotoIndex = 0;
+    renderModalContent();
+  }
+}
+
+export async function prevModalPhoto() {
+  if (!state.photos || state.photos.length === 0) return;
+  if (state.modalPhotoIndex > 0) {
+    state.modalPhotoIndex--;
+    renderModalContent();
+  } else if (state.photos.length > 1) {
+    state.modalPhotoIndex = state.photos.length - 1;
+    renderModalContent();
+  }
 }
 
 export function renderModalContent() {
@@ -140,8 +170,9 @@ export function renderModalContent() {
 
   renderModalInfo(photo);
 
-  modalPrev.style.display = state.modalPhotoIndex > 0 ? "" : "none";
-  modalNext.style.display = state.modalPhotoIndex < state.photos.length - 1 ? "" : "none";
+  const hasMultiple = state.photos.length > 1 || state.currentPage < state.totalPages;
+  modalPrev.style.display = hasMultiple ? "flex" : "none";
+  modalNext.style.display = hasMultiple ? "flex" : "none";
 }
 
 function renderModalInfo(photo) {
@@ -226,13 +257,20 @@ function renderModalInfo(photo) {
   modalInfo.appendChild(fileSection);
 
   if (photo.latitude != null && photo.longitude != null) {
-    const gpsSection = createInfoSection(t("gps_sec"));
-    addInfoRow(gpsSection, t("lat_lbl"), photo.latitude.toFixed(6));
-    addInfoRow(gpsSection, t("lng_lbl"), photo.longitude.toFixed(6));
-    if (photo.altitude != null) {
-      addInfoRow(gpsSection, t("alt_lbl"), photo.altitude.toFixed(1) + "m");
+    const lat = Number(photo.latitude);
+    const lng = Number(photo.longitude);
+    if (!isNaN(lat) && !isNaN(lng)) {
+      const gpsSection = createInfoSection(t("gps_sec"));
+      addInfoRow(gpsSection, t("lat_lbl"), lat.toFixed(6));
+      addInfoRow(gpsSection, t("lng_lbl"), lng.toFixed(6));
+      if (photo.altitude != null) {
+        const alt = Number(photo.altitude);
+        if (!isNaN(alt)) {
+          addInfoRow(gpsSection, t("alt_lbl"), alt.toFixed(1) + "m");
+        }
+      }
+      modalInfo.appendChild(gpsSection);
     }
-    modalInfo.appendChild(gpsSection);
   }
 
   const tagsSection = createInfoSection(t("tags_sec"));
@@ -375,3 +413,100 @@ function addInfoRow(section, label, value) {
 
   section.appendChild(row);
 }
+
+let modalEventsInitialized = false;
+export function setupModalEvents() {
+  if (modalEventsInitialized) return;
+  modalEventsInitialized = true;
+
+  const modalClose = $("modal-close");
+  const modalPrev = $("modal-prev");
+  const modalNext = $("modal-next");
+  const modalBackdrop = $("modal-backdrop");
+  const modalImageContainer = $("modal-image-container");
+
+  if (modalClose) {
+    modalClose.addEventListener("click", function (e) {
+      e.stopPropagation();
+      closeModal();
+    });
+  }
+
+  if (modalPrev) {
+    modalPrev.addEventListener("click", function (e) {
+      e.stopPropagation();
+      prevModalPhoto();
+    });
+  }
+
+  if (modalNext) {
+    modalNext.addEventListener("click", function (e) {
+      e.stopPropagation();
+      nextModalPhoto();
+    });
+  }
+
+  if (modalBackdrop) {
+    modalBackdrop.addEventListener("click", function (e) {
+      if (e.target === modalBackdrop || e.target === modalImageContainer) {
+        closeModal();
+      }
+    });
+  }
+
+  document.addEventListener("keydown", function (e) {
+    if (state.modalPhotoIndex < 0) return;
+    if (e.key === "Escape") {
+      closeModal();
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      prevModalPhoto();
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      nextModalPhoto();
+    }
+  });
+
+  let wheelTimeout = null;
+  if (modalImageContainer) {
+    modalImageContainer.addEventListener("wheel", function (e) {
+      if (state.modalPhotoIndex < 0) return;
+      e.preventDefault();
+      if (wheelTimeout) return;
+      wheelTimeout = setTimeout(() => { wheelTimeout = null; }, 350);
+
+      if (e.deltaY > 0 || e.deltaX > 0) {
+        nextModalPhoto();
+      } else if (e.deltaY < 0 || e.deltaX < 0) {
+        prevModalPhoto();
+      }
+    }, { passive: false });
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+    modalImageContainer.addEventListener("touchstart", function (e) {
+      if (e.touches && e.touches.length === 1) {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+      }
+    }, { passive: true });
+
+    modalImageContainer.addEventListener("touchend", function (e) {
+      if (state.modalPhotoIndex < 0) return;
+      if (e.changedTouches && e.changedTouches.length === 1) {
+        const touchEndX = e.changedTouches[0].clientX;
+        const touchEndY = e.changedTouches[0].clientY;
+        const deltaX = touchEndX - touchStartX;
+        const deltaY = touchEndY - touchStartY;
+        if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
+          if (deltaX < 0) {
+            nextModalPhoto();
+          } else {
+            prevModalPhoto();
+          }
+        }
+      }
+    }, { passive: true });
+  }
+}
+

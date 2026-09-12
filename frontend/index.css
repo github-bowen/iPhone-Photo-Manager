@@ -1620,33 +1620,36 @@ input[type="checkbox"] {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  background: var(--bg-glass);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid var(--border-subtle);
+  background: rgba(20, 20, 32, 0.75);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: var(--radius-full);
-  color: var(--text-primary);
-  width: 48px;
-  height: 48px;
+  color: #ffffff;
+  width: 50px;
+  height: 50px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  z-index: 10;
+  z-index: 25;
   transition: all var(--transition-fast);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  user-select: none;
 }
 .modal-nav:hover {
-  background: var(--bg-overlay);
-  color: var(--accent-purple);
-  box-shadow: 0 4px 16px var(--accent-glow);
-  transform: translateY(-50%) scale(1.1);
+  background: rgba(124, 58, 237, 0.88);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.45);
+  box-shadow: 0 6px 24px rgba(124, 58, 237, 0.55);
+  transform: translateY(-50%) scale(1.12);
 }
 .modal-nav:active {
-  transform: translateY(-50%) scale(0.95);
+  transform: translateY(-50%) scale(0.92);
 }
 .modal-nav svg {
-  opacity: 0.8;
+  opacity: 0.95;
+  pointer-events: none;
   transition: all var(--transition-fast);
 }
 .modal-nav:hover svg {

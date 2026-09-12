@@ -4,7 +4,7 @@ import { applyTranslations } from './i18n.js';
 import { updateStats } from './utils.js';
 import { loadPhotos, resetAndReload, setupInfiniteScroll } from './gallery.js';
 import { loadTimeline, loadLocations, closeMobileSidebar, resetSidebarTimer } from './sidebar.js';
-import { closeModal, renderModalContent } from './modal.js';
+import { closeModal, renderModalContent, setupModalEvents } from './modal.js';
 import { initAutoplay } from './autoplay.js';
 
 const $ = (id) => document.getElementById(id);
@@ -135,82 +135,6 @@ function setupFilters() {
   }
 }
 
-function setupKeyboard() {
-  document.addEventListener("keydown", function (e) {
-    if (state.modalPhotoIndex < 0) return;
-
-    if (e.key === "Escape") {
-      closeModal();
-    } else if (e.key === "ArrowLeft") {
-      e.preventDefault();
-      if (state.modalPhotoIndex > 0) {
-        state.modalPhotoIndex--;
-        renderModalContent();
-      }
-    } else if (e.key === "ArrowRight") {
-      e.preventDefault();
-      if (state.modalPhotoIndex < state.photos.length - 1) {
-        state.modalPhotoIndex++;
-        renderModalContent();
-      }
-    }
-  });
-
-  const modalClose = $("modal-close");
-  const modalPrev = $("modal-prev");
-  const modalNext = $("modal-next");
-  const modalBackdrop = $("modal-backdrop");
-  const modalImageContainer = $("modal-image-container");
-
-  if (modalClose) modalClose.addEventListener("click", closeModal);
-  if (modalPrev) {
-    modalPrev.addEventListener("click", function () {
-      if (state.modalPhotoIndex > 0) {
-        state.modalPhotoIndex--;
-        renderModalContent();
-      }
-    });
-  }
-  if (modalNext) {
-    modalNext.addEventListener("click", function () {
-      if (state.modalPhotoIndex < state.photos.length - 1) {
-        state.modalPhotoIndex++;
-        renderModalContent();
-      }
-    });
-  }
-  if (modalBackdrop) {
-    modalBackdrop.addEventListener("click", function (e) {
-      if (e.target === modalBackdrop || e.target === modalImageContainer) {
-        closeModal();
-      }
-    });
-  }
-
-  let wheelTimeout = null;
-  if (modalImageContainer) {
-    modalImageContainer.addEventListener("wheel", function (e) {
-      if (state.modalPhotoIndex < 0) return;
-      e.preventDefault();
-      
-      if (wheelTimeout) return;
-      wheelTimeout = setTimeout(() => { wheelTimeout = null; }, 400);
-      
-      if (e.deltaY > 0 || e.deltaX > 0) {
-        if (state.modalPhotoIndex < state.photos.length - 1) {
-          state.modalPhotoIndex++;
-          renderModalContent();
-        }
-      } else if (e.deltaY < 0 || e.deltaX < 0) {
-        if (state.modalPhotoIndex > 0) {
-          state.modalPhotoIndex--;
-          renderModalContent();
-        }
-      }
-    }, { passive: false });
-  }
-}
-
 async function init() {
   const langToggle = $("lang-toggle");
   const loadOriginalToggle = $("load-original-toggle");
@@ -264,7 +188,7 @@ async function init() {
   document.body.className = "theme-" + state.theme;
 
   setupFilters();
-  setupKeyboard();
+  setupModalEvents();
   setupInfiniteScroll();
 
   if (loadOriginalToggle) {
