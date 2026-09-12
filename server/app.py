@@ -22,13 +22,15 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from deep_translator import GoogleTranslator
 
+from pydantic import BaseModel
+
 from server.database import (
     init_db, get_db, upsert_photo, update_photo,
     get_photos, get_photo_by_id, get_timeline, get_locations,
     get_photo_count, get_photos_without_thumbnails,
     get_photos_without_location, get_all_filepaths, delete_photo_by_filepath,
     backfill_missing_timestamps, get_filepaths_below_scan_version,
-    get_takeout_sidecar_state
+    get_takeout_sidecar_state, set_photo_favorite
 )
 from server.scanner import (
     SCAN_VERSION, build_takeout_sidecar_indexes, get_all_files_on_disk,
@@ -419,6 +421,25 @@ async def api_get_photo(photo_id: int):
         else:
             photo["display_location"] = photo.get("location_name")
         return photo
+    finally:
+        await db.close()
+
+
+class FavoriteUpdate(BaseModel):
+    is_favorite: Optional[bool] = None
+
+
+@app.post("/api/photos/{photo_id}/favorite")
+@app.put("/api/photos/{photo_id}/favorite")
+async def api_toggle_photo_favorite(photo_id: int, payload: Optional[FavoriteUpdate] = None):
+    """Toggle or set the favorite status of a photo."""
+    db = await get_db()
+    try:
+        fav_val = payload.is_favorite if payload is not None else None
+        res = await set_photo_favorite(db, photo_id, fav_val)
+        if res is None:
+            raise HTTPException(status_code=404, detail="Photo not found")
+        return {"success": True, "photo_id": photo_id, "is_favorite": res}
     finally:
         await db.close()
 

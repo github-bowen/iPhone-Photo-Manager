@@ -74,16 +74,21 @@ function renderCardContent(card, photo) {
     overlay.appendChild(locBadge);
   }
 
-  if (photo.is_favorite) {
-    const favoriteBadge = document.createElement("span");
-    favoriteBadge.className = "photo-card-badge favorite";
-    favoriteBadge.textContent = "★";
-    favoriteBadge.title = t("favorite_lbl");
-    favoriteBadge.setAttribute("aria-label", t("favorite_lbl"));
-    overlay.appendChild(favoriteBadge);
-  }
-
   card.appendChild(overlay);
+
+  // Interactive favorite button at top-right
+  const favBtn = document.createElement("button");
+  favBtn.className = "photo-card-fav-btn" + (photo.is_favorite ? " active" : "");
+  favBtn.setAttribute("type", "button");
+  favBtn.innerHTML = photo.is_favorite ? "★" : "☆";
+  const favTitle = photo.is_favorite ? t("unfavorite_btn") : t("favorite_btn");
+  favBtn.title = favTitle;
+  favBtn.setAttribute("aria-label", favTitle);
+  favBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggleFavorite(photo, favBtn, card);
+  });
+  card.appendChild(favBtn);
 
   if ((photo.is_live_photo && photo.live_photo_mov) || photo.is_motion_photo) {
     let hoverTimeout;
@@ -324,4 +329,35 @@ export function setupInfiniteScroll() {
       loadPhotos(true);
     }
   });
+}
+
+export async function toggleFavorite(photo, favBtn, card) {
+  try {
+    const res = await api(`/api/photos/${photo.id}/favorite`, { method: "POST" });
+    if (res && res.success) {
+      photo.is_favorite = res.is_favorite ? 1 : 0;
+      if (favBtn) {
+        favBtn.classList.toggle("active", !!photo.is_favorite);
+        favBtn.innerHTML = photo.is_favorite ? "★" : "☆";
+        const label = photo.is_favorite ? t("unfavorite_btn") : t("favorite_btn");
+        favBtn.title = label;
+        favBtn.setAttribute("aria-label", label);
+      }
+      // If currently filtered by favorites and unfavorited, animate card removal
+      if (state.activeFilter === "favorites" && !photo.is_favorite && card) {
+        card.style.transition = "opacity 0.25s ease, transform 0.25s ease";
+        card.style.opacity = "0";
+        card.style.transform = "scale(0.9)";
+        setTimeout(() => {
+          card.remove();
+          const gallery = $("gallery");
+          if (gallery && !gallery.querySelector(".photo-card")) {
+            gallery.replaceChildren(createEmptyState("⭐", t("no_favorites"), t("no_favorites_hint")));
+          }
+        }, 250);
+      }
+    }
+  } catch (err) {
+    console.error("Failed to toggle favorite:", err);
+  }
 }
